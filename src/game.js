@@ -8,12 +8,14 @@
   const RUNE_LIMIT = 3;
   const REFRESH_COST = 3;
   const BEST_KEY = "twenty-one-rogue-best";
+  const FIRST_PLAY_KEY = "twenty-one-rogue-first-played";
+  const TUTORIAL_DONE_KEY = "twenty-one-rogue-tutorial-finished";
 
   // ---------------- 教程内容定义 ----------------
   const tutorialSteps = [
     { title: "欢迎来到 21点回廊", text: "你的目标是尽可能多地通过层数。\n如果你的【筹码】在结算时降为 0，游戏就会结束。" },
-    { title: "基础操作", text: "【摸牌】：抽一张牌，试图接近 21 点。\n【停牌】：结束本回合，开始结算。扣除 (21-当前点数) 点筹码，超过 21 点（爆牌）将直接被扣除 6 点筹码。\n【弃牌】：主动丢弃不需要的手牌（每回合限一次）。" },
-    { title: "层数与关底", text: "游戏以【层】为单位，每层包含 3 个回合。右上角的圆点代表当前进度。\n第 3 战是【关底】，会带有极其危险的负面特效。你可以将鼠标悬停在红色的关底圆点上，提前查看它的削弱效果以及击破后的回血量。" },
+    { title: "基础操作", text: "【摸牌】：抽一张牌，如果抽牌后超过 21 点（爆牌）将直接被扣除 6 点筹码，并结束该回合。\n【停牌】：结束本回合。扣除 (21-手牌点数) 点筹码。\n【弃牌】：主动丢弃不需要的手牌（每回合限一次）。" },
+    { title: "层数与关底", text: "游戏以【层】为单位，每层包含 3 个回合。右上角的圆点代表当前进度。\n第 3 战是【关底】，会带有极其危险的负面特效。你可以将鼠标悬停在右上角红色的关底圆点上，提前查看它的削弱效果！" },
     { title: "商店与构筑", text: "每个回合结算后都会进入【商店阶段】。\n你可以消耗金币购买【符文】（全局被动增益）或【画笔】（修改、强化牌库里的卡牌），构筑出独一无二的流派！" }
   ];
   // ---------------------------------------------
@@ -124,12 +126,24 @@
     modalText: document.querySelector("#modalText"),
     modalContent: document.querySelector("#modalContent"),
     modalActions: document.querySelector("#modalActions"),
+    modalCloseButton: document.querySelector("[data-modal-close]"),
     gameOverDialog: document.querySelector("#gameOverDialog"),
     gameOverSummary: document.querySelector("#gameOverSummary"),
   };
 
   let nextCardId = 1;
   let settleTimer = 0;
+
+  function createTutorialState() {
+    return {
+      active: false,
+      awaiting: "",
+      offerReason: "",
+      shopTargetType: "",
+      shopTargetId: "",
+      grantedGold: 0,
+    };
+  }
 
   const state = {
     phase: "playing",
@@ -153,6 +167,7 @@
     modal: null,
     motionQueue: [],
     log: [],
+    tutorial: createTutorialState(),
   };
 
   const runeCatalog = [
@@ -202,6 +217,293 @@
 
   function saveBestRound() {
     window.localStorage.setItem(BEST_KEY, String(state.best));
+  }
+
+  function isFirstPlay() {
+    return !window.localStorage.getItem(FIRST_PLAY_KEY);
+  }
+
+  function markFirstPlaySeen() {
+    window.localStorage.setItem(FIRST_PLAY_KEY, "true");
+  }
+
+  function shouldOfferTutorial(reason) {
+    if (reason === "restart") return true;
+    return reason === "boot" && isFirstPlay();
+  }
+
+  function showTutorialModal(options) {
+    state.modal = {
+      kind: "tutorial",
+      title: options.title,
+      text: options.text,
+      actions: options.actions || [],
+      hideClose: options.hideClose !== false,
+    };
+  }
+
+  function showTutorialOffer(reason) {
+    const isRestart = reason === "restart";
+    state.tutorial = createTutorialState();
+    state.tutorial.offerReason = reason;
+    showTutorialModal({
+      title: isRestart ? "\u518d\u6765\u4e00\u5c40" : "\u65b0\u624b\u6559\u7a0b",
+      text: isRestart
+        ? "\u65b0\u7684\u4e00\u5c40\u5df2\u7ecf\u51c6\u5907\u597d\u4e86\u3002\u8981\u4e0d\u8981\u987a\u624b\u518d\u8ddf\u4e00\u904d\u6559\u7a0b\uff1f"
+        : "\u68c0\u6d4b\u5230\u4f60\u662f\u7b2c\u4e00\u6b21\u6e38\u73a9\u3002\u8981\u4e0d\u8981\u76f4\u63a5\u5728\u5bf9\u5c40\u91cc\u8ddf\u7740\u6559\u7a0b\u719f\u6089\u4e00\u904d\uff1f",
+      actions: [
+        { action: "tutorial-decline", label: "\u5148\u76f4\u63a5\u5f00\u59cb" },
+        { action: "tutorial-accept", label: "\u5f00\u59cb\u6559\u7a0b", primary: true },
+      ],
+    });
+  }
+
+  function createTutorialCard(rank, offset) {
+    const pool = state.activeSuits.length > 0 ? state.activeSuits : suits;
+    return makeCard(rank, pool[offset % pool.length], "tutorial");
+  }
+
+  function prepareTutorialOpeningRound() {
+    window.clearTimeout(settleTimer);
+    nextCardId = 1;
+    state.phase = "playing";
+    state.floor = 1;
+    state.stage = 1;
+    state.chips = STARTING_CHIPS;
+    state.gold = STARTING_GOLD;
+    state.drawPile = createHalfDeck();
+    state.discardPile = [];
+    state.hand = [
+      createTutorialCard("4", 0),
+      createTutorialCard("7", 1),
+    ];
+    state.runes = [];
+    state.shop = { runes: [], brushes: [], bought: [] };
+    state.roundFlags = { discardsUsed: 0, draws: 0, extraDiscards: 0, shieldReduction: 0 };
+    state.upcomingBossDebuffs = generateUpcomingDebuffs(state.floor);
+    state.activeBossDebuffs = [];
+    state.ultimateCounters = { "20-21": 10, "21": 5 };
+    state.lastResult = null;
+    state.motionQueue = [];
+    state.log = [];
+    state.tutorial = createTutorialState();
+    state.tutorial.active = true;
+
+    state.drawPile.push(createTutorialCard("A", 2));
+    state.drawPile.push(createTutorialCard("9", 3));
+    state.drawPile.push(createTutorialCard("5", 4));
+
+    addLog("\u6559\u7a0b\u5df2\u5f00\u59cb\uff0c\u5148\u8ddf\u7740\u5f15\u5bfc\u719f\u6089\u8fd9\u4e00\u56de\u5408\u3002");
+  }
+
+  function getTutorialPrompt(reason) {
+    if (reason === "hit") {
+      showTutorialModal({
+        title: "\u76ee\u6807\u548c\u5931\u8d25\u6761\u4ef6",
+        text: "\u4f60\u7684\u76ee\u6807\u662f\u4e00\u5c42\u5c42\u5f80\u4e0a\u722c\uff0c\u6253\u5f97\u8d8a\u8fdc\u8d8a\u597d\u3002\n\u6bcf\u56de\u5408\u90fd\u5728\u60f3\u529e\u6cd5\u8ba9\u624b\u724c\u5c3d\u91cf\u63a5\u8fd1 21 \u70b9\uff0c\u800c\u7b79\u7801\u964d\u5230 0 \u65f6\u8fd9\u5c40\u5c31\u7ed3\u675f\u4e86\u3002",
+        actions: [
+          { action: "tutorial-ready-hit", label: "\u5f00\u59cb\u7ec3\u4e60", primary: true },
+        ],
+      });
+      return;
+    }
+
+    if (reason === "discard") {
+      showTutorialModal({
+        title: "\u5148\u8bd5\u8bd5\u5f03\u724c",
+        text: "\u3010\u5f03\u724c\u3011\u53ef\u4ee5\u628a\u5f53\u524d\u4e0d\u60f3\u8981\u7684\u624b\u724c\u4e22\u8fdb\u5f03\u724c\u5806\uff0c\u4e3a\u8fd9\u4e2a\u56de\u5408\u817e\u51fa\u7a7a\u95f4\u3002\n\u9ed8\u8ba4\u6bcf\u56de\u5408\u53ea\u80fd\u4e3b\u52a8\u5f03\u724c 1 \u6b21\uff0c\u73b0\u5728\u70b9\u51fb\u3010\u5f03\u724c\u3011\u8bd5\u8bd5\u3002",
+        actions: [
+          { action: "tutorial-ready-discard", label: "\u53bb\u5f03\u4e00\u5f20", primary: true },
+        ],
+      });
+      return;
+    }
+
+    if (reason === "stand") {
+      showTutorialModal({
+        title: "\u518d\u8bd5\u8bd5\u505c\u724c",
+        text: "\u3010\u505c\u724c\u3011\u4f1a\u7acb\u523b\u7ed3\u675f\u8fd9\u4e2a\u56de\u5408\uff0c\u7136\u540e\u6309\u7167\u4f60\u4e0e 21 \u70b9\u7684\u5dee\u8ddd\u6263\u9664\u7b79\u7801\u3002\n\u73b0\u5728\u70b9\u51fb\u3010\u505c\u724c\u3011\uff0c\u6211\u4eec\u4e00\u8d77\u8fdb\u5165\u5546\u5e97\u3002",
+        actions: [
+          { action: "tutorial-ready-stand", label: "\u53bb\u505c\u724c", primary: true },
+        ],
+      });
+      return;
+    }
+
+    if (reason === "shop") {
+      const topUpText = state.tutorial.grantedGold > 0
+        ? "\n\n\u4e3a\u4e86\u8ba9\u4f60\u80fd\u7acb\u523b\u8bd5\u8bd5\uff0c\u6211\u5e2e\u4f60\u8865\u4e86 " + state.tutorial.grantedGold + " \u91d1\u5e01\u3002"
+        : "";
+      showTutorialModal({
+        title: "\u8fdb\u5165\u5546\u5e97",
+        text: "\u6bcf\u4e2a\u56de\u5408\u7ed3\u7b97\u540e\u90fd\u4f1a\u8fdb\u5546\u5e97\u3002\n\u3010\u7b26\u6587\u3011\u662f\u8fd9\u5c40\u6301\u7eed\u751f\u6548\u7684\u88ab\u52a8\u589e\u76ca\uff0c\u3010\u753b\u7b14\u3011\u5219\u662f\u7528\u6765\u4fee\u6539\u3001\u5f3a\u5316\u724c\u5e93\u7684\u9053\u5177\u3002\n\u5148\u4e70\u4e0b\u4e00\u4ef6\u7b26\u6587\uff0c\u770b\u770b\u5546\u5e97\u600e\u4e48\u7528\u3002" + topUpText,
+        actions: [
+          { action: "tutorial-ready-shop", label: "\u53bb\u8d2d\u7269", primary: true },
+        ],
+      });
+      return;
+    }
+
+    if (reason === "boss") {
+      showTutorialModal({
+        title: "\u4e00\u5c42\u6709\u4e09\u56de\u5408",
+        text: "\u4e00\u5c42\u7531 3 \u4e2a\u56de\u5408\u7ec4\u6210\uff0c\u7b2c 3 \u4e2a\u56de\u5408\u5c31\u662f\u5173\u5e95\u6218\u6597\u3002\n\u53f3\u4e0a\u89d2\u7684\u7ea2\u8272\u5706\u70b9\u4ee3\u8868\u8fd9\u5c42\u7684\u5173\u5e95\uff0c\u628a\u9f20\u6807\u79fb\u4e0a\u53bb\uff0c\u5c31\u80fd\u63d0\u524d\u770b\u5230\u5173\u5e95\u7279\u6548\u3002",
+        actions: [
+          { action: "tutorial-ready-boss", label: "\u6211\u6765\u770b\u770b", primary: true },
+        ],
+      });
+      return;
+    }
+
+    if (reason === "finish") {
+      showTutorialModal({
+        title: "\u6559\u7a0b\u5b8c\u6210",
+        text: "\u4f60\u5df2\u7ecf\u8d70\u5b8c\u4e86\u6838\u5fc3\u6d41\u7a0b\uff1a\u6478\u724c\u3001\u5f03\u724c\u3001\u505c\u724c\uff0c\u4ee5\u53ca\u5546\u5e97\u548c\u5173\u5e95\u63d0\u793a\u7684\u770b\u6cd5\u3002\n\u73b0\u5728\u5c31\u53ef\u4ee5\u76f4\u63a5\u7ee7\u7eed\u8fd9\u5c40\u4e86\u3002",
+        actions: [
+          { action: "tutorial-finish", label: "\u7ee7\u7eed\u8fd9\u5c40", primary: true },
+        ],
+      });
+    }
+  }
+
+  function tutorialAllowsAction(action) {
+    if (!state.tutorial.active) return true;
+    if (state.tutorial.awaiting === "hit") return action === "hit";
+    if (state.tutorial.awaiting === "discard-button") return action === "discard";
+    if (state.tutorial.awaiting === "stand") return action === "stand";
+    return false;
+  }
+
+  function tutorialAllowsShopPurchase(type, id) {
+    if (!state.tutorial.active || state.tutorial.awaiting !== "shop-buy") return true;
+    return state.tutorial.shopTargetType === type && state.tutorial.shopTargetId === id;
+  }
+
+  function getTutorialHint() {
+    if (!state.tutorial.active) return "";
+    if (state.tutorial.awaiting === "hit") return "\u6559\u7a0b\uff1a\u5148\u70b9\u51fb\u3010\u6478\u724c\u3011\u62bd 1 \u5f20\u724c\u3002";
+    if (state.tutorial.awaiting === "discard-button") return "\u6559\u7a0b\uff1a\u73b0\u5728\u8bd5\u8bd5\u3010\u5f03\u724c\u3011\u3002";
+    if (state.tutorial.awaiting === "discard-select") {
+      return state.modal && state.modal.selectedIds.length > 0
+        ? "\u6559\u7a0b\uff1a\u70b9\u51fb\u786e\u8ba4\uff0c\u5b8c\u6210\u8fd9\u6b21\u5f03\u724c\u3002"
+        : "\u6559\u7a0b\uff1a\u5148\u9009\u4e2d\u4e00\u5f20\u8981\u4e22\u6389\u7684\u624b\u724c\u3002";
+    }
+    if (state.tutorial.awaiting === "stand") return "\u6559\u7a0b\uff1a\u70b9\u51fb\u3010\u505c\u724c\u3011\u8fdb\u5165\u7ed3\u7b97\u3002";
+    if (state.tutorial.awaiting === "shop-buy") return "\u6559\u7a0b\uff1a\u5148\u4e70\u4e0b\u9ad8\u4eae\u7684\u7b26\u6587\u3002";
+    if (state.tutorial.awaiting === "boss-hover") return "\u6559\u7a0b\uff1a\u628a\u9f20\u6807\u79fb\u5230\u53f3\u4e0a\u89d2\u7684\u7ea2\u8272\u5706\u70b9\u4e0a\u3002";
+    return "";
+  }
+
+  function clearTutorialFocus() {
+    document.querySelectorAll(".is-tutorial-focus").forEach(function (node) {
+      node.classList.remove("is-tutorial-focus");
+    });
+  }
+
+  function syncTutorialFocus() {
+    clearTutorialFocus();
+    if (!state.tutorial.active) return;
+
+    let selector = "";
+    if (state.tutorial.awaiting === "hit") selector = '[data-action="hit"]';
+    else if (state.tutorial.awaiting === "discard-button") selector = '[data-action="discard"]';
+    else if (state.tutorial.awaiting === "discard-select") {
+      selector = state.modal && state.modal.selectedIds.length > 0 ? "[data-modal-confirm]" : "[data-select-card]";
+    }
+    else if (state.tutorial.awaiting === "stand") selector = '[data-action="stand"]';
+    else if (state.tutorial.awaiting === "shop-buy") {
+      selector = state.tutorial.shopTargetType === "rune"
+        ? '[data-buy-rune="' + state.tutorial.shopTargetId + '"]'
+        : '[data-buy-brush="' + state.tutorial.shopTargetId + '"]';
+    }
+    else if (state.tutorial.awaiting === "boss-hover") selector = '[data-tutorial-id="boss-node"]';
+
+    if (!selector) return;
+    document.querySelectorAll(selector).forEach(function (node) {
+      node.classList.add("is-tutorial-focus");
+      const shopItem = node.closest(".shop-item");
+      if (shopItem) shopItem.classList.add("is-tutorial-focus");
+    });
+  }
+
+  function setTutorialShopTarget() {
+    const targetId = state.shop.runes[0];
+    const targetRune = getRune(targetId);
+    state.tutorial.shopTargetType = "rune";
+    state.tutorial.shopTargetId = targetId || "";
+    state.tutorial.grantedGold = 0;
+
+    if (targetRune && state.gold < targetRune.price) {
+      state.tutorial.grantedGold = targetRune.price - state.gold;
+      state.gold = targetRune.price;
+      addLog("\u6559\u7a0b\u8865\u7ed9\uff1a\u83b7\u5f97 " + state.tutorial.grantedGold + " \u91d1\u5e01\uff0c\u8db3\u591f\u5148\u8bd5\u8bd5\u8d2d\u4e70\u3002");
+    }
+  }
+
+  function startTutorial() {
+    prepareTutorialOpeningRound();
+    getTutorialPrompt("hit");
+    render();
+  }
+
+  function finishTutorial() {
+    window.localStorage.setItem(TUTORIAL_DONE_KEY, "true");
+    state.tutorial = createTutorialState();
+    state.modal = null;
+    render();
+  }
+
+  function handleTutorialAction(action) {
+    if (action === "tutorial-decline") {
+      state.tutorial = createTutorialState();
+      state.modal = null;
+      render();
+      return;
+    }
+
+    if (action === "tutorial-accept") {
+      startTutorial();
+      return;
+    }
+
+    if (action === "tutorial-ready-hit") {
+      state.modal = null;
+      state.tutorial.awaiting = "hit";
+      render();
+      return;
+    }
+
+    if (action === "tutorial-ready-discard") {
+      state.modal = null;
+      state.tutorial.awaiting = "discard-button";
+      render();
+      return;
+    }
+
+    if (action === "tutorial-ready-stand") {
+      state.modal = null;
+      state.tutorial.awaiting = "stand";
+      render();
+      return;
+    }
+
+    if (action === "tutorial-ready-shop") {
+      state.modal = null;
+      state.tutorial.awaiting = "shop-buy";
+      render();
+      return;
+    }
+
+    if (action === "tutorial-ready-boss") {
+      state.modal = null;
+      state.tutorial.awaiting = "boss-hover";
+      render();
+      return;
+    }
+
+    if (action === "tutorial-finish") {
+      finishTutorial();
+    }
   }
 
   function makeCard(rank, suit, source) {
@@ -281,7 +583,7 @@
     return card.tags.includes(tag);
   }
 
-  function resetGame() {
+  function resetGame(reason) {
     window.clearTimeout(settleTimer);
     nextCardId = 1;
     state.phase = "playing";
@@ -301,12 +603,19 @@
     state.motionQueue = [];
     state.log = [];
     state.activeBossDebuffs = [];
-    state.upcomingBossDebuffs = generateUpcomingDebuffs(state.floor); 
+    state.upcomingBossDebuffs = generateUpcomingDebuffs(state.floor);
+    state.tutorial = createTutorialState();
 
     addLog("新的牌局开始，初始牌库保留" + state.activeSuits.map(function(s){return s.label}).join("、") + "。");
     beginRound();
 
-    if (!window.localStorage.getItem("tutorial-skipped")) {
+    if (shouldOfferTutorial(reason || "manual")) {
+      if (reason === "boot") markFirstPlaySeen();
+      showTutorialOffer(reason || "manual");
+      render();
+    }
+
+    if (false && !window.localStorage.getItem("tutorial-skipped")) {
       state.modal = {
         kind: "tutorial",
         title: "新手指南",
@@ -470,6 +779,12 @@
       handleBust();
       return;
     }
+    if (state.tutorial.active && state.tutorial.awaiting === "hit") {
+      state.tutorial.awaiting = "";
+      getTutorialPrompt("discard");
+      render();
+      return;
+    }
     render();
   }
 
@@ -493,6 +808,11 @@
       kind: "discard", title: "主动弃牌", text: "选择一张手牌弃掉。本回合还可弃牌" + (getMaxDiscards() - state.roundFlags.discardsUsed) + "次。",
       selectedIds: [], candidates: state.hand.slice(), minPick: 1, maxPick: 1,
     };
+    if (state.tutorial.active && state.tutorial.awaiting === "discard-button") {
+      state.tutorial.awaiting = "discard-select";
+      state.modal.hideClose = true;
+      state.modal.text = "\u9009\u4e2d\u4e00\u5f20\u624b\u724c\uff0c\u7136\u540e\u786e\u8ba4\u5c06\u5b83\u4e22\u8fdb\u5f03\u724c\u5806\u3002";
+    }
     render();
   }
 
@@ -511,6 +831,12 @@
       }
     }
     state.modal = null;
+    if (state.tutorial.active && state.tutorial.awaiting === "discard-select") {
+      state.tutorial.awaiting = "";
+      getTutorialPrompt("stand");
+      render();
+      return;
+    }
     render();
   }
 
@@ -620,6 +946,9 @@
     addLog(resultLabel + "结算，扣除" + penalty + "筹码，获得" + goldReward + "金币。");
 
     updateBestRound(state.floor);
+    if (state.tutorial.active && state.tutorial.awaiting === "stand") {
+      state.tutorial.awaiting = "shop-arrival";
+    }
     beginSettlement("shop");
   }
 
@@ -637,6 +966,11 @@
       } else {
         state.phase = "shop";
         generateShop();
+        if (state.tutorial.active && state.tutorial.awaiting === "shop-arrival") {
+          state.tutorial.awaiting = "";
+          setTutorialShopTarget();
+          getTutorialPrompt("shop");
+        }
       }
       render();
     }, 620);
@@ -699,6 +1033,12 @@
     state.gold -= rune.price;
     state.runes.push(runeId);
     state.shop.bought.push(runeId);
+    if (state.tutorial.active && state.tutorial.awaiting === "shop-buy" && state.tutorial.shopTargetType === "rune" && state.tutorial.shopTargetId === runeId) {
+      state.tutorial.awaiting = "";
+      getTutorialPrompt("boss");
+      render();
+      return;
+    }
     addLog("买入符文：" + rune.name + "。");
     render();
   }
@@ -1066,7 +1406,7 @@
       if (isCurrent) cssClass += " is-current";
 
       // 只有 Boss 节点给 tooltip
-      const tooltipAttr = isBoss ? ` data-boss-tooltip="${escapeHtml(tooltipText)}"` : "";
+      const tooltipAttr = isBoss ? ` data-boss-tooltip="${escapeHtml(tooltipText)}" data-tutorial-id="boss-node"` : "";
       
       circlesHtml += `<div class="${cssClass}"${tooltipAttr}></div>`;
     }
@@ -1140,8 +1480,9 @@
     elements.suitStat.innerHTML = renderBossProgressBar();
 
     elements.phaseLabel.textContent = getPhaseLabel();
-    elements.roundMessage.textContent = getRoundMessage(value);
-    elements.shopMessage.textContent = getRoundMessage(value);
+    const tutorialHint = getTutorialHint();
+    elements.roundMessage.textContent = tutorialHint || getRoundMessage(value);
+    elements.shopMessage.textContent = tutorialHint || getRoundMessage(value);
     elements.roundView.hidden = showingShop;
     elements.shopView.hidden = !showingShop;
     elements.handCards.innerHTML = state.hand.map(function (card, index) { return renderCard(card, value.path[index]); }).join("");
@@ -1156,14 +1497,15 @@
     const penaltyText = currentPenalty === 0 ? "无损失" : "失去" + currentPenalty + "筹码";
     const canDiscard = discardsLeft > 0 && state.hand.length > 0 && !hasDebuff("max-1-draw") && !hasDebuff("option-disabled");
 
-    setActionState("hit", isPlaying && !hitDisabled);
-    setActionState("discard", isPlaying && canDiscard, discardText);
-    setActionState("stand", isPlaying, penaltyText);
-    setActionState("next", isShop);
-    setActionState("refresh", isShop && state.gold >= REFRESH_COST);
+    setActionState("hit", isPlaying && !hitDisabled && tutorialAllowsAction("hit"));
+    setActionState("discard", isPlaying && canDiscard && tutorialAllowsAction("discard"), discardText);
+    setActionState("stand", isPlaying && tutorialAllowsAction("stand"), penaltyText);
+    setActionState("next", isShop && !state.tutorial.active);
+    setActionState("refresh", isShop && state.gold >= REFRESH_COST && !state.tutorial.active);
 
     renderModal();
     renderGameOver();
+    syncTutorialFocus();
     flushMotionQueue();
   }
 
@@ -1272,7 +1614,7 @@
     const bought = state.shop.bought.includes(rune.id);
     const owned = state.runes.includes(rune.id);
     const full = state.runes.length >= RUNE_LIMIT;
-    const canBuy = state.gold >= rune.price && !bought && !owned && !full;
+    const canBuy = state.gold >= rune.price && !bought && !owned && !full && tutorialAllowsShopPurchase("rune", rune.id);
     const buttonText = bought || owned ? "已拥有" : full ? "槽满" : "购买";
 
     return renderShopCard({
@@ -1284,7 +1626,7 @@
   function renderBrushShopItem(brushId) {
     const brush = getBrush(brushId);
     const bought = state.shop.bought.includes(brush.id);
-    const canBuy = state.gold >= brush.price && !bought && canUseBrush(brush);
+    const canBuy = state.gold >= brush.price && !bought && canUseBrush(brush) && tutorialAllowsShopPurchase("brush", brush.id);
     const buttonText = bought ? "已使用" : "使用";
 
     return renderShopCard({
@@ -1332,9 +1674,12 @@
     if (!state.modal) { elements.modalOverlay.hidden = true; return; }
     const modal = state.modal;
     elements.modalOverlay.hidden = false;
+    if (elements.modalCloseButton) {
+      elements.modalCloseButton.hidden = !!modal.hideClose;
+    }
     elements.modalEyebrow.textContent = modal.kind === "pile" ? "牌堆" : modal.kind === "brush" ? "画笔" : modal.kind === "tutorial" ? "新手教程" : "弃牌";
     elements.modalTitle.textContent = modal.title;
-    elements.modalText.textContent = modal.text;
+    elements.modalText.textContent = modal.kind === "tutorial" ? "" : modal.text;
     elements.modalContent.innerHTML = renderModalContent(modal);
     elements.modalActions.innerHTML = renderModalActions(modal);
   }
@@ -1363,6 +1708,10 @@
 
   function renderModalActions(modal) {
     if (modal.kind === "tutorial") {
+      return (modal.actions || []).map(function (action) {
+        const className = action.primary ? "game-button primary" : "game-button";
+        return '<button class="' + className + '" type="button" data-tutorial-action="' + escapeHtml(action.action) + '">' + escapeHtml(action.label) + "</button>";
+      }).join("");
       if (modal.isPrompt) {
         return '<button class="game-button" type="button" data-tutorial-action="skip">跳过</button>' +
                '<button class="game-button primary" type="button" data-tutorial-action="start">查看教程</button>';
@@ -1402,27 +1751,25 @@
 
     const tutorialActionBtn = event.target.closest("[data-tutorial-action]");
     if (tutorialActionBtn) {
-      const action = tutorialActionBtn.dataset.tutorialAction;
-      if (action === "skip") {
-        window.localStorage.setItem("tutorial-skipped", "true");
-        state.modal = null;
-      } else if (action === "start") {
-        state.modal.isPrompt = false;
-        state.modal.step = 0;
-        state.modal.title = tutorialSteps[0].title;
-        state.modal.text = tutorialSteps[0].text;
-      } else if (action === "next") {
-        state.modal.step += 1;
-        if (state.modal.step >= tutorialSteps.length) {
-          window.localStorage.setItem("tutorial-skipped", "true");
-          state.modal = null;
-        } else {
-          state.modal.title = tutorialSteps[state.modal.step].title;
-          state.modal.text = tutorialSteps[state.modal.step].text;
-        }
-      }
-      render();
+      handleTutorialAction(tutorialActionBtn.dataset.tutorialAction);
       return;
+    }
+
+    if (state.tutorial.active) {
+      if (state.tutorial.awaiting === "boss-hover") {
+        return;
+      }
+      if (state.tutorial.awaiting === "discard-select") {
+        if (!selectCardButton && !modalConfirm) return;
+      } else if (state.tutorial.awaiting === "discard-button") {
+        if (!actionButton || actionButton.dataset.action !== "discard") return;
+      } else if (state.tutorial.awaiting === "hit") {
+        if (!actionButton || actionButton.dataset.action !== "hit") return;
+      } else if (state.tutorial.awaiting === "stand") {
+        if (!actionButton || actionButton.dataset.action !== "stand") return;
+      } else if (state.tutorial.awaiting === "shop-buy") {
+        if (!buyRuneButton && !buyBrushButton) return;
+      }
     }
 
     if (pileButton) { openPileViewer(pileButton.dataset.viewPile); return; }
@@ -1443,8 +1790,18 @@
     else if (actionButton.dataset.action === "discard") startDiscard();
     else if (actionButton.dataset.action === "stand") stand();
     else if (actionButton.dataset.action === "next") nextRound();
-    else if (actionButton.dataset.action === "restart") resetGame();
+    else if (actionButton.dataset.action === "restart") resetGame("restart");
     else if (actionButton.dataset.action === "refresh") refreshShop();
+  });
+
+  document.addEventListener("mouseover", function (event) {
+    const bossNode = event.target.closest('[data-tutorial-id="boss-node"]');
+    if (!bossNode) return;
+    if (state.tutorial.active && state.tutorial.awaiting === "boss-hover") {
+      state.tutorial.awaiting = "";
+      getTutorialPrompt("finish");
+      render();
+    }
   });
 
   ['runeSlots', 'rewardPreview', 'runeHint'].forEach(function(id) {
@@ -1464,5 +1821,5 @@
     }
   }
 
-  resetGame();
+  resetGame("boot");
 })();

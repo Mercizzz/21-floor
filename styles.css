@@ -476,6 +476,16 @@ h2 {
   opacity: 0.45;
 }
 
+.is-tutorial-focus {
+  position: relative;
+  z-index: 2;
+  outline: 3px solid rgba(215, 168, 67, 0.92);
+  box-shadow:
+    0 0 0 6px rgba(215, 168, 67, 0.18),
+    0 0 24px rgba(215, 168, 67, 0.4);
+  animation: tutorial-focus-pulse 1.2s ease-in-out infinite;
+}
+
 .game-button.primary {
   color: #1e1c13;
   border-color: rgba(215, 168, 67, 0.9);
@@ -630,6 +640,11 @@ h2 {
 .shop-item.is-bought {
   border-color: rgba(84, 184, 131, 0.5);
   background: rgba(84, 184, 131, 0.12);
+}
+
+.shop-item.is-tutorial-focus {
+  border-color: rgba(215, 168, 67, 0.75);
+  background: rgba(215, 168, 67, 0.12);
 }
 
 .shop-item-head {
@@ -1474,4 +1489,17 @@ h2 {
 @keyframes pulse-boss {
   from { box-shadow: 0 0 4px #ff4747; }
   to { box-shadow: 0 0 16px #ff4747; }
+}
+
+@keyframes tutorial-focus-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 4px rgba(215, 168, 67, 0.14),
+      0 0 16px rgba(215, 168, 67, 0.28);
+  }
+  50% {
+    box-shadow:
+      0 0 0 7px rgba(215, 168, 67, 0.24),
+      0 0 28px rgba(215, 168, 67, 0.45);
+  }
 }
