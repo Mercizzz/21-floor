@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const STARTING_CHIPS = 16; // 修正初始筹码（以你上一轮的要求为准）
+  const STARTING_CHIPS = 16;
   const STARTING_GOLD = 0;
   const BASE_BUST_PENALTY = 6;
   const BASE_GOLD_REWARD = 3;
@@ -58,7 +58,6 @@
     { id: "21", name: "终极头目2", desc: "本回合在21点停牌不扣筹码，否则（包括爆牌）失去{n}点筹码。" },
   ];
 
-  // 关键词解释字典
   const keywordTooltips = {
     "尖刺": "可以同时视为自身点数或 1 点。",
     "镀金": "停牌结算时若留在手牌，每张额外产出 2 金币。",
@@ -67,23 +66,20 @@
     "缝合": "可以同时视为两张牌对应的点数。"
   };
 
-  // 自动将文本中的关键词加上 tooltip 的 HTML
   function injectTooltips(text) {
     let html = escapeHtml(text);
     for (const [word, desc] of Object.entries(keywordTooltips)) {
-      // 使用正则替换，加上下划线样式和 data-tooltip 属性
       const regex = new RegExp(word, "g");
       html = html.replace(regex, `<span class="keyword-tooltip" data-tooltip="${desc}">${word}</span>`);
     }
     return html;
   }
-  // 合并获取数据
+
   function getBossDebuffData(id) {
     const all = weakDebuffs.concat(strongDebuffs, ultimateDebuffs);
     return all.find(function (b) { return b.id === id; });
   }
 
-  // 动态替换文本中的 {n}
   function getDebuffDesc(id) {
     const data = getBossDebuffData(id);
     if (!data) return "";
@@ -93,10 +89,9 @@
     }
     return text;
   }
-  // ---------------------------------------------
 
   const elements = {
-    roundStat: document.querySelector("#roundStat"), // 仍复用原有id，但内容将改为“层数”
+    roundStat: document.querySelector("#roundStat"),
     chipsStat: document.querySelector("#chipsStat"),
     goldStat: document.querySelector("#goldStat"),
     bestStat: document.querySelector("#bestStat"),
@@ -142,16 +137,17 @@
       shopTargetType: "",
       shopTargetId: "",
       grantedGold: 0,
+      locked: false, // 控制教程中的强制等待UI锁定状态
     };
   }
 
   const state = {
     phase: "playing",
-    floor: 1,  // 第几层
-    stage: 1,  // 1=常规战1，2=常规战2，3=关底战
+    floor: 1,  
+    stage: 1,  
     chips: STARTING_CHIPS,
     gold: STARTING_GOLD,
-    best: loadBestRound(), // 这里记录最高层数
+    best: loadBestRound(),
     removedSuits: [],
     activeSuits: [],
     drawPile: [],
@@ -162,7 +158,7 @@
     roundFlags: { discardsUsed: 0, draws: 0, extraDiscards: 0, shieldReduction: 0 },
     upcomingBossDebuffs: [],
     activeBossDebuffs: [], 
-    ultimateCounters: { "20-21": 10, "21": 5 }, // 终极头目惩罚计数器
+    ultimateCounters: { "20-21": 10, "21": 5 },
     lastResult: null,
     modal: null,
     motionQueue: [],
@@ -366,8 +362,20 @@
     }
   }
 
+  // ---------------- 新增：延迟弹出教程提示并暂时锁定 UI ----------------
+  function delayTutorialPrompt(reason) {
+    state.tutorial.locked = true;
+    window.setTimeout(function () {
+      state.tutorial.locked = false;
+      getTutorialPrompt(reason);
+      render();
+    }, 1000);
+  }
+  // -------------------------------------------------------------------
+
   function tutorialAllowsAction(action) {
     if (!state.tutorial.active) return true;
+    if (state.tutorial.locked) return false;
     if (state.tutorial.awaiting === "hit") return action === "hit";
     if (state.tutorial.awaiting === "discard-button") return action === "discard";
     if (state.tutorial.awaiting === "stand") return action === "stand";
@@ -375,7 +383,9 @@
   }
 
   function tutorialAllowsShopPurchase(type, id) {
-    if (!state.tutorial.active || state.tutorial.awaiting !== "shop-buy") return true;
+    if (!state.tutorial.active) return true;
+    if (state.tutorial.locked) return false;
+    if (state.tutorial.awaiting !== "shop-buy") return true;
     return state.tutorial.shopTargetType === type && state.tutorial.shopTargetId === id;
   }
 
@@ -402,7 +412,7 @@
 
   function syncTutorialFocus() {
     clearTutorialFocus();
-    if (!state.tutorial.active) return;
+    if (!state.tutorial.active || state.tutorial.locked) return;
 
     let selector = "";
     if (state.tutorial.awaiting === "hit") selector = '[data-action="hit"]';
@@ -554,7 +564,6 @@
     return items[Math.floor(Math.random() * items.length)];
   }
 
-  // 根据当前层数生成词缀池组合
   function generateUpcomingDebuffs(floor) {
     const debuffs = [];
     if (floor <= 3) {
@@ -575,7 +584,6 @@
     return state.activeBossDebuffs.includes(id);
   }
 
-  // 统一判断卡牌标签是否被禁锢
   function hasActiveTag(card, tag) {
     if (hasDebuff("no-tags") && ["spike", "quirky", "shield", "gilded"].includes(tag)) {
       return false;
@@ -612,16 +620,6 @@
     if (shouldOfferTutorial(reason || "manual")) {
       if (reason === "boot") markFirstPlaySeen();
       showTutorialOffer(reason || "manual");
-      render();
-    }
-
-    if (false && !window.localStorage.getItem("tutorial-skipped")) {
-      state.modal = {
-        kind: "tutorial",
-        title: "新手指南",
-        text: "检测到你是第一次游玩，是否需要查看新手教程？",
-        isPrompt: true
-      };
       render();
     }
   }
@@ -779,11 +777,10 @@
       handleBust();
       return;
     }
+
     if (state.tutorial.active && state.tutorial.awaiting === "hit") {
       state.tutorial.awaiting = "";
-      getTutorialPrompt("discard");
-      render();
-      return;
+      delayTutorialPrompt("discard");
     }
     render();
   }
@@ -801,7 +798,7 @@
 
   function startDiscard() {
     if (state.phase !== "playing" || state.modal || state.hand.length === 0) return;
-    if (hasDebuff("option-disabled") || hasDebuff("max-1-draw")) return; // 关底锁定弃牌
+    if (hasDebuff("option-disabled") || hasDebuff("max-1-draw")) return; 
     if (state.roundFlags.discardsUsed >= getMaxDiscards()) return;
     
     state.modal = {
@@ -833,16 +830,12 @@
     state.modal = null;
     if (state.tutorial.active && state.tutorial.awaiting === "discard-select") {
       state.tutorial.awaiting = "";
-      getTutorialPrompt("stand");
-      render();
-      return;
+      delayTutorialPrompt("stand");
     }
     render();
   }
 
-  // 基础伤害计算（包含防具抵扣和终极覆盖）
   function getBasePenalty(kind, total) {
-    // 1. 终极/强力覆盖效果判定
     if (hasDebuff("21")) {
       return (kind === "stand" && total === 21) ? 0 : state.ultimateCounters["21"];
     }
@@ -853,7 +846,6 @@
       return (kind === "stand" && total >= 19 && total <= 21) ? 0 : 8;
     }
 
-    // 2. 常规算法
     if (kind === "bust") {
       return Math.max(1, BASE_BUST_PENALTY - runeCount("golden-charm"));
     } else {
@@ -870,7 +862,6 @@
 
   function calculateStandPenalty(total) {
     let penalty = getBasePenalty("stand", total);
-    // 如果没有被终极词缀覆写伤害（即走常规扣血），才能受倍率效果影响
     let isOverride = hasDebuff("21") || hasDebuff("20-21") || hasDebuff("19-20-21");
     if (!isOverride) {
       if (hasDebuff("stand-damage-x3")) penalty *= 3;
@@ -917,7 +908,6 @@
       return;
     }
 
-    // 关底特殊贪婪/碎盾词缀结算
     if (hasDebuff("lose-gold-not-21") && kind === "stand" && value.total !== 21) {
       state.gold = 0;
       addLog("关底贪婪诅咒触发：点数非21，失去了所有的金币！");
@@ -927,12 +917,10 @@
       addLog("关底碎盾诅咒触发：点数不足20，失去了所有的符文！");
     }
 
-    // 终极头目：通过后惩罚累加
     if (state.stage === 3) {
       if (hasDebuff("20-21")) state.ultimateCounters["20-21"] += 1;
       if (hasDebuff("21")) state.ultimateCounters["21"] += 1;
       
-      // 层数击破奖励
       const healAmount = Math.max(1, 10 - (state.floor - 1) * 2);
       state.chips += healAmount;
       addLog("🎉 击破第" + state.floor + "层！恢复" + healAmount + "枚筹码。");
@@ -969,7 +957,7 @@
         if (state.tutorial.active && state.tutorial.awaiting === "shop-arrival") {
           state.tutorial.awaiting = "";
           setTutorialShopTarget();
-          getTutorialPrompt("shop");
+          delayTutorialPrompt("shop");
         }
       }
       render();
@@ -993,13 +981,6 @@
     }
 
     return reward;
-  }
-
-  function previewGoldReward() {
-    if (state.lastResult && state.phase === "shop") return state.lastResult.goldReward;
-    const value = getHandValue(state.hand);
-    let penalty = calculateStandPenalty(value.total);
-    return getGoldReward("stand", value.total, penalty);
   }
 
   function updateBestRound(floor) {
@@ -1035,9 +1016,7 @@
     state.shop.bought.push(runeId);
     if (state.tutorial.active && state.tutorial.awaiting === "shop-buy" && state.tutorial.shopTargetType === "rune" && state.tutorial.shopTargetId === runeId) {
       state.tutorial.awaiting = "";
-      getTutorialPrompt("boss");
-      render();
-      return;
+      delayTutorialPrompt("boss");
     }
     addLog("买入符文：" + rune.name + "。");
     render();
@@ -1210,7 +1189,6 @@
     if (state.stage === 3) {
       state.floor += 1;
       state.stage = 1;
-      // state.upcomingBossDebuffs = generateUpcomingDebuffs(state.floor);
     } else {
       state.stage += 1;
     }
@@ -1373,7 +1351,6 @@
   function renderBossProgressBar() {
     let displayFloor = state.floor;
     let displayStage = state.stage;
-    // 跨阶段预判逻辑保持不变
     if (state.phase === "shop" || state.phase === "settling" || state.phase === "gameover") {
       displayStage += 1;
       if (displayStage > 3) {
@@ -1382,18 +1359,15 @@
       }
     }
     
-    // 获取当层 Boss 数据与回血量
-
     const healAmount = Math.max(1, 10 - (displayFloor - 1) * 2);
     const distance = 3 - displayStage;
     const isBossActive = (distance === 0 && state.phase === "playing");
-    const debuffIds = isBossActive ? state.activeBossDebuffs : state.upcomingBossDebuffs;const debuffNames = debuffIds.map(id => getBossDebuffData(id).name).join(" + ");
+    const debuffIds = isBossActive ? state.activeBossDebuffs : state.upcomingBossDebuffs;
+    const debuffNames = debuffIds.map(id => getBossDebuffData(id).name).join(" + ");
     const debuffDescs = debuffIds.map(id => getDebuffDesc(id)).join(" ");
     
-    // 悬浮提示文本
     const tooltipText = `削弱：${debuffNames}\n(${debuffDescs})\n\n击破恢复：${healAmount} 筹码`;
 
-    // 绘制 3 个节点
     let circlesHtml = "";
     for (let i = 1; i <= 3; i++) {
       const isBoss = (i === 3);
@@ -1405,7 +1379,6 @@
       if (isPast) cssClass += " is-past";
       if (isCurrent) cssClass += " is-current";
 
-      // 只有 Boss 节点给 tooltip
       const tooltipAttr = isBoss ? ` data-boss-tooltip="${escapeHtml(tooltipText)}" data-tutorial-id="boss-node"` : "";
       
       circlesHtml += `<div class="${cssClass}"${tooltipAttr}></div>`;
@@ -1537,7 +1510,6 @@
       if (hasActiveTag(card, "gilded")) overlayBadges.push('<span class="card-badge">镀金</span>');
       if (hasActiveTag(card, "quirky")) overlayBadges.push('<span class="card-badge">奇巧</span>');
       if (hasActiveTag(card, "shield")) overlayBadges.push('<span class="card-badge">护盾</span>');
-      // 如果标签被禁锢，加个被封印的视觉标识（可选）
       if (hasDebuff("no-tags") && (card.tags.includes("spike") || card.tags.includes("gilded") || card.tags.includes("quirky") || card.tags.includes("shield"))) {
          overlayBadges.push('<span class="card-badge" style="background:#555; text-decoration:line-through;">封印</span>');
       }
@@ -1712,14 +1684,6 @@
         const className = action.primary ? "game-button primary" : "game-button";
         return '<button class="' + className + '" type="button" data-tutorial-action="' + escapeHtml(action.action) + '">' + escapeHtml(action.label) + "</button>";
       }).join("");
-      if (modal.isPrompt) {
-        return '<button class="game-button" type="button" data-tutorial-action="skip">跳过</button>' +
-               '<button class="game-button primary" type="button" data-tutorial-action="start">查看教程</button>';
-      } else {
-        const isLast = modal.step === tutorialSteps.length - 1;
-        return '<button class="game-button" type="button" data-tutorial-action="skip">直接开始</button>' +
-               '<button class="game-button primary" type="button" data-tutorial-action="next">' + (isLast ? "开始游戏" : "下一页") + '</button>';
-      }
     }
     if (modal.kind === "pile") return '<button class="game-button primary" type="button" data-modal-close>关闭</button>';
     const valid = isModalSelectionValid(modal);
@@ -1739,6 +1703,9 @@
   }
 
   document.addEventListener("click", function (event) {
+    // 拦截锁定期内的一切点击，防止多重操作和越权破坏引导
+    if (state.tutorial.active && state.tutorial.locked) return;
+
     const actionButton = event.target.closest("[data-action]");
     const pileButton = event.target.closest("[data-view-pile]");
     const buyRuneButton = event.target.closest("[data-buy-rune]");
@@ -1797,9 +1764,9 @@
   document.addEventListener("mouseover", function (event) {
     const bossNode = event.target.closest('[data-tutorial-id="boss-node"]');
     if (!bossNode) return;
-    if (state.tutorial.active && state.tutorial.awaiting === "boss-hover") {
+    if (state.tutorial.active && state.tutorial.awaiting === "boss-hover" && !state.tutorial.locked) {
       state.tutorial.awaiting = "";
-      getTutorialPrompt("finish");
+      delayTutorialPrompt("finish");
       render();
     }
   });
