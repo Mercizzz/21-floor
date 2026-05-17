@@ -1,0 +1,1477 @@
+:root {
+  --bg: #111719;
+  --panel: #182226;
+  --panel-soft: #213035;
+  --felt: #0f684e;
+  --felt-dark: #0a3a31;
+  --paper: #f7ecd1;
+  --paper-deep: #e7d4aa;
+  --ink: #172023;
+  --muted: #9fb0ad;
+  --gold: #d7a843;
+  --gold-dark: #8b651d;
+  --red: #c9463f;
+  --blue: #315c8f;
+  --green: #54b883;
+  --shadow: 0 22px 70px rgba(0, 0, 0, 0.35);
+  --table-card-width: clamp(76px, 11vw, 116px);
+  --modal-card-width: 92px;
+  color-scheme: dark;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "Microsoft YaHei", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: #f7f2e7;
+  background:
+    linear-gradient(135deg, rgba(215, 168, 67, 0.08), transparent 34%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 8px),
+    var(--bg);
+}
+
+button {
+  font: inherit;
+}
+
+.game-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(310px, 380px);
+  gap: 18px;
+  width: min(1440px, calc(100vw - 32px));
+  min-height: calc(100vh - 32px);
+  margin: 16px auto;
+}
+
+.table-panel,
+.side-panel > section {
+  border: 1px solid rgba(247, 236, 209, 0.13);
+  border-radius: 8px;
+  background: rgba(24, 34, 38, 0.92);
+  box-shadow: var(--shadow);
+}
+
+.table-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 22px;
+  border-bottom: 1px solid rgba(247, 236, 209, 0.12);
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  color: var(--gold);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 0;
+  font-size: clamp(1.7rem, 3.2vw, 3.2rem);
+  line-height: 1;
+}
+
+h2 {
+  margin-bottom: 12px;
+  font-size: 1rem;
+}
+
+.top-stats,
+.deck-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.top-stats {
+  grid-template-columns: repeat(4, minmax(70px, 1fr));
+}
+
+.stat-chip,
+.deck-grid > div,
+.deck-grid > button {
+  min-width: 0;
+  border: 1px solid rgba(247, 236, 209, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.055);
+  padding: 10px 12px;
+}
+
+.stat-chip span,
+.deck-grid span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.stat-chip strong,
+.deck-grid strong {
+  display: block;
+  color: #fff9e9;
+  font-size: 1.35rem;
+  line-height: 1.1;
+}
+
+.stat-chip.is-primary {
+  border-color: rgba(215, 168, 67, 0.55);
+  background: rgba(215, 168, 67, 0.12);
+}
+
+.stat-chip.is-gold {
+  border-color: rgba(215, 168, 67, 0.42);
+  background: rgba(215, 168, 67, 0.08);
+}
+
+.felt {
+  display: grid;
+  grid-template-rows: auto minmax(320px, 1fr) auto;
+  gap: 20px;
+  min-height: 0;
+  margin: 18px;
+  padding: 18px;
+  border: 1px solid rgba(247, 236, 209, 0.14);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(247, 236, 209, 0.08), transparent 42%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 9px),
+    linear-gradient(160deg, var(--felt), var(--felt-dark));
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.26);
+}
+
+.felt[hidden],
+.shop-stage[hidden] {
+  display: none;
+}
+
+.round-strip,
+.hand-title,
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.round-strip {
+  min-height: 46px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(8, 19, 19, 0.38);
+}
+
+.phase-label {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: #1b2118;
+  background: var(--gold);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.round-message {
+  min-width: 0;
+  color: #f6ecd1;
+  text-align: right;
+}
+
+.table-layout {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(84px, 130px) minmax(0, 1fr) minmax(84px, 130px);
+  align-items: center;
+  gap: clamp(8px, 2vw, 22px);
+  min-height: 0;
+}
+
+.hand-zone {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 20px;
+  min-height: 0;
+}
+
+.hand-title {
+  display: flex;
+  flex-direction: column; /* 改为上下排列 */
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: rgba(247, 236, 209, 0.78);
+  font-weight: 800;
+  text-align: center;
+}
+
+.hand-title strong {
+  color: #fff;
+  font-size: 4rem; /* 调大字号 */
+  line-height: 1;
+  text-shadow: 0 0 20px rgba(215, 168, 67, 0.6), 0 4px 8px rgba(0, 0, 0, 0.5); /* 增加金色发光和投影 */
+}
+
+.hand-cards {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 210px;
+  padding: 18px;
+}
+
+.table-pile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  width: clamp(78px, 9vw, 112px);
+  aspect-ratio: 5 / 7;
+  border: 0;
+  border-radius: 8px;
+  color: #fff9e9;
+  background: transparent;
+  cursor: pointer;
+  isolation: isolate;
+}
+
+.table-pile::before,
+.table-pile::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(247, 236, 209, 0.18);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 42%),
+    repeating-linear-gradient(45deg, rgba(247, 236, 209, 0.14) 0 2px, transparent 2px 8px),
+    #26353a;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.22);
+  z-index: -1;
+}
+
+.table-pile::before {
+  transform: translate(7px, -7px) rotate(3deg);
+  opacity: 0.55;
+}
+
+.table-pile::after {
+  transform: rotate(-2deg);
+}
+
+.table-pile span,
+.table-pile strong {
+  position: relative;
+  z-index: 1;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.table-pile span {
+  align-self: end;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.table-pile strong {
+  align-self: start;
+  font-size: 1.65rem;
+  line-height: 1;
+}
+
+.table-pile:hover::after {
+  border-color: rgba(215, 168, 67, 0.72);
+}
+
+.animation-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.flight-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: clamp(58px, 7vw, 88px);
+  aspect-ratio: 5 / 7;
+  border: 1px solid rgba(247, 236, 209, 0.22);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.18), transparent 42%),
+    repeating-linear-gradient(45deg, rgba(247, 236, 209, 0.16) 0 2px, transparent 2px 8px),
+    #26353a;
+  box-shadow: 0 16px 26px rgba(0, 0, 0, 0.28);
+}
+
+.flight-card.draw {
+  animation: draw-flight 520ms cubic-bezier(0.18, 0.82, 0.28, 1) forwards;
+}
+
+.flight-card.discard {
+  animation: discard-flight 560ms cubic-bezier(0.35, 0.02, 0.24, 1) forwards;
+}
+
+.flight-card.shuffle {
+  animation: shuffle-flight 760ms ease-in-out forwards;
+}
+
+@keyframes draw-flight {
+  from {
+    opacity: 0;
+    transform: translate(38vw, -8vh) rotate(8deg) scale(0.82);
+  }
+  24% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-2deg) scale(1);
+  }
+}
+
+@keyframes discard-flight {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(-2deg) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-39vw, -7vh) rotate(-11deg) scale(0.84);
+  }
+}
+
+@keyframes shuffle-flight {
+  from {
+    opacity: 0;
+    transform: translate(-39vw, -7vh) rotate(-16deg) scale(0.8);
+  }
+  35% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translate(38vw, -8vh) rotate(10deg) scale(0.84);
+  }
+}
+
+.playing-card {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  width: var(--table-card-width);
+  height: calc(var(--table-card-width) * 1.4);
+  aspect-ratio: auto;
+  padding: 10px;
+  border: 1px solid rgba(23, 32, 35, 0.18);
+  border-radius: 8px;
+  color: var(--ink);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.82), transparent 46%),
+    var(--paper);
+  box-shadow:
+    0 14px 26px rgba(0, 0, 0, 0.22),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.4);
+  transform: translateY(0);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.playing-card:nth-child(even) {
+  transform: translateY(8px) rotate(1.5deg);
+}
+
+.playing-card:nth-child(odd) {
+  transform: translateY(-2px) rotate(-1.2deg);
+}
+
+.playing-card.red {
+  color: var(--red);
+}
+
+.card-corner {
+  display: grid;
+  justify-items: start;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.card-corner.bottom {
+  align-self: end;
+  justify-self: end;
+  transform: rotate(180deg);
+}
+
+.card-suit {
+  align-self: center;
+  justify-self: center;
+  font-size: clamp(2.2rem, 6vw, 4.8rem);
+  line-height: 1;
+}
+
+.card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3px;
+  min-height: 18px;
+}
+
+.card-badge {
+  border-radius: 999px;
+  padding: 2px 5px;
+  color: #fff9e9;
+  background: rgba(23, 32, 35, 0.78);
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+
+.action-bar {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  min-height: 54px;
+}
+
+.game-button {
+  min-width: 112px;
+  min-height: 46px;
+  border: 1px solid rgba(247, 236, 209, 0.18);
+  border-radius: 8px;
+  color: #fff9ea;
+  background: rgba(24, 34, 38, 0.86);
+  cursor: pointer;
+  font-weight: 900;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.game-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(247, 236, 209, 0.45);
+}
+
+.game-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.game-button.primary {
+  color: #1e1c13;
+  border-color: rgba(215, 168, 67, 0.9);
+  background: linear-gradient(180deg, #f0cf77, var(--gold));
+}
+
+.game-button.ghost {
+  color: #d7e8ff;
+  border-color: rgba(49, 92, 143, 0.7);
+  background: rgba(49, 92, 143, 0.18);
+}
+
+.mini-button,
+.icon-button {
+  border: 1px solid rgba(247, 236, 209, 0.16);
+  border-radius: 8px;
+  color: #fff9ea;
+  background: rgba(255, 255, 255, 0.055);
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.mini-button {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.mini-button:hover:not(:disabled),
+.icon-button:hover:not(:disabled) {
+  border-color: rgba(247, 236, 209, 0.42);
+}
+
+.mini-button:disabled,
+.icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.side-panel {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 14px;
+  min-height: 0;
+}
+
+.side-panel > section {
+  padding: 16px;
+}
+
+.deck-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.deck-grid.compact-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pile-card {
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pile-card:hover {
+  border-color: rgba(215, 168, 67, 0.55);
+  background: rgba(215, 168, 67, 0.09);
+}
+
+.panel-heading h2 {
+  margin-bottom: 0;
+}
+
+#shopHint {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.panel-heading > span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.owned-runes,
+.shop-items,
+.shop-group {
+  display: grid;
+  gap: 10px;
+}
+
+.rune-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(247, 236, 209, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.rune-card h3,
+.shop-group h3,
+.shop-item h4 {
+  margin: 0;
+}
+
+.rune-card p {
+  margin: 4px 0 0;
+  color: #d9e1dd;
+  font-size: 0.86rem;
+  line-height: 1.42;
+}
+
+.empty-state {
+  min-height: 70px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(247, 236, 209, 0.16);
+  border-radius: 8px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.shop-group {
+  padding-top: 2px;
+}
+
+.shop-group h3 {
+  color: var(--gold);
+  font-size: 0.86rem;
+}
+
+.shop-item {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(247, 236, 209, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.shop-item.is-bought {
+  border-color: rgba(84, 184, 131, 0.5);
+  background: rgba(84, 184, 131, 0.12);
+}
+
+.shop-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.shop-item h4 {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.shop-badge {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 4px 8px;
+  color: #1b2118;
+  background: var(--paper-deep);
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+.shop-item p {
+  margin: 0;
+  color: #d9e1dd;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.shop-item-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.price {
+  color: var(--gold);
+  font-weight: 900;
+}
+
+.shop-item .game-button {
+  min-width: 86px;
+  min-height: 38px;
+}
+
+.shop-stage {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 16px;
+  min-height: 0;
+  margin: 18px;
+  padding: 18px;
+  border: 1px solid rgba(247, 236, 209, 0.14);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(215, 168, 67, 0.1), transparent 42%),
+    rgba(24, 34, 38, 0.74);
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.18);
+}
+
+.shop-stage-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 8px;
+  background: rgba(8, 19, 19, 0.34);
+}
+
+.shop-stage-head h2 {
+  margin: 8px 0 4px;
+  font-size: clamp(1.6rem, 3vw, 2.5rem);
+}
+
+.shop-stage-head p {
+  margin: 0;
+  color: #dce6e2;
+}
+
+.shop-stage-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.shop-piles {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  min-height: 126px;
+  border: 1px solid rgba(247, 236, 209, 0.1);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(15, 104, 78, 0.22), transparent 45%),
+    rgba(8, 19, 19, 0.2);
+}
+
+.shop-piles .table-pile {
+  width: 82px;
+}
+
+.shop-items-stage {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.shop-items-stage .shop-group {
+  align-content: start;
+  padding: 14px;
+  border: 1px solid rgba(247, 236, 209, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.shop-closed {
+  min-height: 86px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(247, 236, 209, 0.16);
+  border-radius: 8px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.log-panel {
+  overflow: hidden;
+}
+
+.game-log {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  max-height: min(35vh, 320px);
+  margin: 0;
+  padding: 0 0 0 22px;
+  overflow: auto;
+  color: #dce6e2;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.game-log li::marker {
+  color: var(--gold);
+  font-weight: 900;
+}
+
+.game-over {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(8, 12, 13, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(8, 12, 13, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.modal-overlay[hidden] {
+  display: none;
+}
+
+.modal-panel {
+  width: min(780px, 100%);
+  max-height: min(86vh, 760px);
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 14px;
+  border: 1px solid rgba(247, 236, 209, 0.18);
+  border-radius: 8px;
+  padding: 18px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.modal-panel h2 {
+  margin-bottom: 0;
+  font-size: 1.45rem;
+}
+
+.modal-text {
+  margin: 0;
+  color: #dce6e2;
+  line-height: 1.5;
+}
+
+.modal-content {
+  min-height: 0;
+  overflow: auto;
+}
+
+.modal-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 14px;
+}
+
+.modal-card {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #fff9ea;
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  text-align: center;
+  padding: 8px;
+
+  grid-template-rows: auto 1fr;
+}
+
+.modal-card:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.modal-card.is-selected {
+  border-color: rgba(215, 168, 67, 0.85);
+  background: rgba(215, 168, 67, 0.15);
+}
+
+.modal-card .playing-card {
+  width: var(--modal-card-width);
+  height: calc(var(--modal-card-width) * 1.4);
+  max-width: 100%;
+  aspect-ratio: auto;
+  flex: 0 0 auto;
+  align-self: start;
+}
+
+.modal-card small {
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.game-over[hidden] {
+  display: none;
+}
+
+.game-over-panel {
+  width: min(420px, 100%);
+  border: 1px solid rgba(247, 236, 209, 0.18);
+  border-radius: 8px;
+  padding: 24px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.game-over-panel h2 {
+  margin-bottom: 8px;
+  font-size: 2rem;
+}
+
+.game-over-panel p:not(.eyebrow) {
+  color: #dce6e2;
+  line-height: 1.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .game-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .side-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .game-log {
+    max-height: 220px;
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --table-card-width: clamp(64px, 25vw, 86px);
+    --modal-card-width: 78px;
+  }
+
+  .game-shell {
+    width: min(100vw - 16px, 640px);
+    margin: 8px auto;
+    gap: 10px;
+  }
+
+  .topbar,
+  .round-strip,
+  .shop-item-foot {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .topbar {
+    padding: 14px;
+  }
+
+  .top-stats,
+  .deck-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stat-chip,
+  .deck-grid > div,
+  .deck-grid > button {
+    padding: 8px;
+  }
+
+  .stat-chip strong,
+  .deck-grid strong {
+    font-size: 1.05rem;
+  }
+
+  .felt {
+    grid-template-rows: auto minmax(250px, 1fr) auto;
+    margin: 10px;
+    padding: 12px;
+  }
+
+  .shop-stage {
+    margin: 10px;
+    padding: 12px;
+  }
+
+  .shop-stage-head,
+  .shop-stage-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .round-message {
+    text-align: left;
+  }
+
+  .hand-cards {
+    gap: 8px;
+    min-height: 180px;
+    padding: 8px;
+  }
+
+  .table-layout {
+    grid-template-columns: 64px minmax(0, 1fr) 64px;
+    gap: 6px;
+  }
+
+  .table-pile {
+    width: 62px;
+  }
+
+  .table-pile span {
+    font-size: 0.68rem;
+  }
+
+  .table-pile strong {
+    font-size: 1.2rem;
+  }
+
+  .playing-card {
+    padding: 8px;
+  }
+
+  .card-badge {
+    font-size: 0.56rem;
+  }
+
+  .action-bar {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .action-bar .game-button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .action-bar .game-button.ghost {
+    grid-column: 1 / -1;
+  }
+
+  .rune-card,
+  .shop-item-foot,
+  .modal-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .rune-card {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-panel {
+    padding: 14px;
+  }
+
+  .modal-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .modal-card {
+    padding: 6px;
+  }
+
+  .modal-card .playing-card {
+    width: var(--modal-card-width);
+    height: calc(var(--modal-card-width) * 1.4);
+  }
+
+  .shop-items-stage {
+    grid-template-columns: 1fr;
+  }
+}
+/* 修改 1：删掉自定义的 width，让它继承普通牌的 clamp 尺寸和 5/7 的宽高比 */
+.playing-card.is-merged {
+  display: flex;
+  flex-direction: row;
+  padding: 0; 
+  overflow: hidden;
+  background: var(--paper);
+  gap: 0;
+}
+
+/* 修改 2：卡牌变窄了，半区的内边距要缩小，不然会把内容挤掉 */
+.card-half {
+  flex: 1;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: 6px 4px; /* 从原先的 10px 缩小 */
+  opacity: 0.35;
+  filter: grayscale(1) blur(0.5px);
+  background: rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+/* 激活状态：恢复色彩和亮度，并加入渐变光泽 */
+.card-half.is-active {
+  opacity: 1;
+  filter: none;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.82), transparent 60%);
+}
+
+/* 修改 3：花色字体也要相应缩小，适应变窄的半区 */
+.card-half .card-suit {
+  font-size: clamp(1.4rem, 4vw, 2.4rem); /* 字号范围缩小 */
+}
+
+/* 中间的物理缝合线特效 */
+.card-stitch {
+  width: 6px;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 3px,
+      rgba(23, 32, 35, 0.6) 3px,
+      rgba(23, 32, 35, 0.6) 5px
+    ),
+    rgba(0, 0, 0, 0.1);
+  border-left: 1px solid rgba(0, 0, 0, 0.15);
+  border-right: 1px dashed rgba(255, 255, 255, 0.4);
+  z-index: 1;
+}
+
+/* 浮动在缝合牌上方的 tag（如尖刺） */
+.card-tags.overlay-tag {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  min-height: auto;
+}
+
+/* 被激活的 Badge 特效 */
+.card-badge.is-active {
+  background: var(--red);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(201, 70, 63, 0.6);
+}
+
+/* 优化 4：让左半区的数字/花色靠左，右半区的靠右，视觉上不会在缝合线处打架 */
+.card-half:first-child .card-corner {
+  justify-items: start;
+}
+.card-half:last-child .card-corner {
+  justify-items: end;
+}
+
+/* --- 专门修复弹窗（Modal）卡牌纵向拉伸问题 --- */
+
+/* 1. 修改 .modal-card 的行布局：从强制拉伸变为两个均分行。 
+   这样整个容器的高度将由两部分决定，不会因文字过长而单方面撑开外部单元格。 */
+.modal-card {
+  grid-template-rows: auto auto !important; /* !important 覆盖之前的设置，确保卡牌 stays top */
+}
+
+/* 2. 给我们在 JS 中新加的文字类名设置样式。
+   将其高度锁定在一个较小、可预测的值。 */
+.modal-card .card-description {
+  margin: 0;
+  padding: 4px; /* 增加内边距 */
+  min-height: 48px; /* 锁定最小高度，防止文字太短导致容器太矮 */
+  display: grid;
+  place-items: center start; /* 文字在区域内左居中 */
+  overflow: hidden; /* 防止文字溢出 */
+  text-overflow: ellipsis; /* 文字过多时显示省略号 */
+  line-height: 1.3;
+}
+
+/* 3. 确保弹窗中的卡牌自身在锁定容器中不会尝试纵向拉伸 */
+.modal-card .playing-card {
+  align-self: start; /* 即使外部容器高，卡牌也要老老实实待在顶部 */
+}
+
+/* 针对选牌界面（带分数和标签）的细微优化，防止两行文字把单元格撑太高 */
+.modal-card-grid small.card-description {
+  min-height: 52px; /* 给两行文字留出更多垂直空间 */
+}
+
+/* Final card-size normalization: merged cards change the interior only, never the outer card box. */
+.hand-cards > .playing-card,
+.hand-cards > .playing-card.is-merged {
+  flex: 0 0 var(--table-card-width);
+  width: var(--table-card-width);
+  height: calc(var(--table-card-width) * 1.4);
+  aspect-ratio: auto;
+}
+
+.modal-card .playing-card,
+.modal-card .playing-card.is-merged {
+  width: var(--modal-card-width) !important;
+  height: calc(var(--modal-card-width) * 1.4) !important;
+  aspect-ratio: auto !important;
+  max-width: 100%;
+  flex: 0 0 auto;
+}
+
+.modal-card .card-description,
+.modal-card-grid small.card-description {
+  min-height: 0;
+  max-height: 3.2em;
+  padding: 2px 4px;
+  place-items: start center;
+}
+
+/* Quick overflow fix for merged-card typography */
+.playing-card.is-merged .card-half {
+  padding: 5px 3px;
+}
+
+.playing-card.is-merged .card-corner {
+  font-size: clamp(0.72rem, 1.5vw, 0.9rem);
+  line-height: 0.92;
+}
+
+.playing-card.is-merged .card-corner span:last-child {
+  font-size: 0.86em;
+}
+
+.playing-card.is-merged .card-corner.bottom {
+  padding-bottom: 1px;
+}
+
+.playing-card.is-merged .card-half .card-suit {
+  font-size: clamp(1.15rem, 2.6vw, 1.85rem);
+}
+
+.playing-card.is-merged .overlay-tag {
+  bottom: 5px;
+}
+
+.modal-card .card-description,
+.modal-card-grid small.card-description {
+  padding: 3px 4px;
+  line-height: 1.2;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 640px) {
+  .playing-card.is-merged .card-half {
+    padding: 4px 2px;
+  }
+
+  .playing-card.is-merged .card-corner {
+    font-size: 0.66rem;
+  }
+
+  .playing-card.is-merged .card-half .card-suit {
+    font-size: 1rem;
+  }
+}
+
+/* --- 修复卡牌内部文字/花色溢出的问题 --- */
+
+/* 1. 减小正常卡牌的内边距，把空间还给内容 (覆盖原有的 padding: 10px) */
+.playing-card {
+  padding: 6px 8px; 
+  overflow: hidden; /* 兜底防线：绝不允许任何内容超出卡牌圆角背景 */
+}
+
+/* 2. 核心修复：当没有尖刺、合并等 tag 时，彻底隐藏标签容器，瞬间省出 18px 核心高度！ */
+.card-tags:empty {
+  display: none;
+}
+
+/* 3. 适度缩小中间大花色的尺寸，让它能乖乖待在 1fr (自适应) 空间内 */
+.card-suit {
+  font-size: clamp(1.6rem, 4vw, 2.8rem); /* 从原先巨大的 2.2/4.8rem 下调 */
+}
+
+/* 4. 规范角落数字和花色的字体大小 */
+.card-corner {
+  font-size: 0.9rem;
+}
+
+/* 5. 确保底部角落紧贴底端 */
+.card-corner.bottom {
+  margin-top: auto;
+}
+
+/* --- 移动端进一步压缩空间 --- */
+@media (max-width: 640px) {
+  .playing-card {
+    padding: 4px 6px; /* 移动端卡牌更小，内边距必须更小 */
+  }
+  .card-corner {
+    font-size: 0.75rem;
+  }
+  .card-suit {
+    font-size: clamp(1.4rem, 6vw, 2.2rem);
+  }
+}
+
+/* --- 关底战专属视觉特效 --- */
+
+/* 当进入关底时，让左侧大桌布变为暗红警告色 */
+.felt.is-boss-active {
+  background:
+    radial-gradient(circle at 50% 40%, rgba(201, 70, 63, 0.15), transparent 50%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 9px),
+    linear-gradient(160deg, #3a1111, #180505) !important;
+  box-shadow: inset 0 0 100px rgba(201, 70, 63, 0.15), 0 0 0 1px rgba(201, 70, 63, 0.3) !important;
+  border-color: rgba(201, 70, 63, 0.4) !important;
+}
+
+/* 关底惩罚横幅特效 */
+.boss-debuff-banner {
+  margin-bottom: 16px;
+  padding: 14px 20px;
+  border-radius: 8px;
+  background: rgba(201, 70, 63, 0.15);
+  border: 1px solid rgba(201, 70, 63, 0.5);
+  color: #ff8e8e;
+  font-size: 1.25rem;
+  font-weight: 900;
+  text-align: center;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  animation: boss-pulse 2s ease-in-out infinite;
+}
+
+.boss-debuff-banner span {
+  display: block;
+  font-size: 0.95rem;
+  color: #ffcccc;
+  font-weight: normal;
+  margin-top: 6px;
+}
+
+@keyframes boss-pulse {
+  0%, 100% { box-shadow: 0 0 15px rgba(201, 70, 63, 0.15); }
+  50% { box-shadow: 0 0 35px rgba(201, 70, 63, 0.45); }
+}
+
+/* 关键词高亮与虚线下划线 */
+.keyword-tooltip {
+  color: var(--gold);
+  border-bottom: 1px dashed var(--gold);
+  cursor: help;
+  position: relative;
+}
+
+/* 悬浮弹窗 */
+.keyword-tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  width: max-content;
+  max-width: 200px;
+  background: rgba(12, 18, 20, 0.95);
+  border: 1px solid rgba(215, 168, 67, 0.4);
+  color: #dce6e2;
+  font-size: 0.8rem;
+  padding: 6px 10px;
+  border-radius: 6px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  white-space: normal;
+  text-align: left;
+}
+
+.keyword-tooltip:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-4px);
+}
+
+/* 圆圈轨道容器 */
+.stage-track {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
+
+/* 轨道背景连线 */
+.stage-track::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  right: 10px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-50%);
+  z-index: 0;
+}
+
+/* 独立圆圈节点 */
+.stage-node {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--panel-soft);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  z-index: 1;
+  transition: all 0.3s ease;
+}
+
+/* 已经通过的节点 */
+.stage-node.is-past {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+/* 正在进行的节点（闪烁） */
+.stage-node.is-current {
+  background: var(--gold);
+  border-color: #fff;
+  box-shadow: 0 0 10px var(--gold);
+  animation: pulse-node 1.5s infinite alternate;
+}
+
+/* 关底 Boss 节点（未打时） */
+.stage-node.is-boss {
+  width: 18px; /* Boss 点稍微大一点 */
+  height: 18px;
+  border-color: #ff4747;
+  background: rgba(255, 71, 71, 0.2);
+  cursor: help;
+}
+
+/* 关底 Boss 节点（正在打或已过） */
+.stage-node.is-boss.is-current, 
+.stage-node.is-boss.is-past {
+  background: #ff4747;
+  box-shadow: 0 0 12px #ff4747;
+  animation: pulse-boss 1.5s infinite alternate;
+}
+
+/* Boss 悬浮 Tooltip (纯 CSS 实现) */
+.stage-node.is-boss::after {
+  content: attr(data-boss-tooltip);
+  white-space: pre-wrap; /* 允许识别 \n 换行 */
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 10px;
+  width: max-content;
+  max-width: 220px;
+  background: rgba(18, 5, 5, 0.95);
+  border: 1px solid rgba(255, 71, 71, 0.5);
+  color: #ffcccc;
+  font-size: 0.8rem;
+  padding: 8px 12px;
+  border-radius: 6px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-5px);
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 100;
+  text-align: left;
+  line-height: 1.4;
+}
+
+.stage-node.is-boss:hover::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@keyframes pulse-node {
+  from { box-shadow: 0 0 2px var(--gold); }
+  to { box-shadow: 0 0 12px var(--gold); }
+}
+
+@keyframes pulse-boss {
+  from { box-shadow: 0 0 4px #ff4747; }
+  to { box-shadow: 0 0 16px #ff4747; }
+}

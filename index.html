@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>二十一回廊</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <section class="table-panel" aria-label="主区域">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Blackjack Roguelite</p>
+            <h1>二十一回廊</h1>
+          </div>
+          <div class="top-stats" aria-label="当前状态">
+            <div class="stat-chip">
+              <span>回合</span>
+              <strong id="roundStat">1</strong>
+            </div>
+            <div class="stat-chip is-primary">
+              <span>筹码</span>
+              <strong id="chipsStat">30</strong>
+            </div>
+            <div class="stat-chip is-gold">
+              <span>金币</span>
+              <strong id="goldStat">0</strong>
+            </div>
+            <div class="stat-chip">
+              <span>最佳</span>
+              <strong id="bestStat">0</strong>
+            </div>
+          </div>
+        </header>
+
+        <div id="roundView" class="felt">
+          <div class="round-strip">
+            <span id="phaseLabel" class="phase-label">摸牌阶段</span>
+            <span id="roundMessage" class="round-message">选择摸牌或停牌。</span>
+          </div>
+
+          <div class="table-layout">
+            <button class="table-pile discard-pile" type="button" data-view-pile="discard" aria-label="查看弃牌堆">
+              <span>弃牌堆</span>
+              <strong id="discardCount">0</strong>
+            </button>
+
+            <div class="hand-zone">
+              <div class="hand-title">
+                <span>当前手牌</span>
+                <strong id="handValue">0</strong>
+              </div>
+              <div id="handCards" class="hand-cards" aria-live="polite"></div>
+            </div>
+
+            <button class="table-pile draw-pile" type="button" data-view-pile="draw" aria-label="查看抽牌堆">
+              <span>抽牌堆</span>
+              <strong id="drawCount">26</strong>
+            </button>
+
+            <div id="animationLayer" class="animation-layer" aria-hidden="true"></div>
+          </div>
+
+          <div class="action-bar" aria-label="回合操作">
+            <button class="game-button primary" type="button" data-action="hit">
+              摸牌
+            </button>
+            <button class="game-button" type="button" data-action="discard">
+              弃牌
+            </button>
+            <button class="game-button" type="button" data-action="stand">
+              停牌
+            </button>
+          </div>
+        </div>
+
+        <div id="shopView" class="shop-stage" hidden>
+          <div class="shop-stage-head">
+            <div>
+              <span id="shopPhaseLabel" class="phase-label">商店阶段</span>
+              <h2>商店</h2>
+              <p id="shopMessage">回合结算后可以购买符文和画笔。</p>
+            </div>
+            <div class="shop-stage-actions">
+              <button class="mini-button" type="button" data-action="refresh">
+                刷新 2金币
+              </button>
+              <button class="game-button ghost" type="button" data-action="next">
+                下回合
+              </button>
+            </div>
+          </div>
+          <div class="shop-piles" aria-label="商店牌堆">
+            <button class="table-pile discard-pile" type="button" data-view-pile="discard" aria-label="查看弃牌堆">
+              <span>弃牌堆</span>
+              <strong id="shopDiscardCount">0</strong>
+            </button>
+            <button class="table-pile draw-pile" type="button" data-view-pile="draw" aria-label="查看抽牌堆">
+              <span>抽牌堆</span>
+              <strong id="shopDrawCount">26</strong>
+            </button>
+          </div>
+          <div id="shopItems" class="shop-items shop-items-stage"></div>
+        </div>
+      </section>
+
+      <aside class="side-panel" aria-label="游戏信息">
+        <section class="info-panel">
+          <div class="panel-heading">
+            <h2>牌局</h2>
+            <span id="suitStat">半副牌</span>
+          </div>
+          <div class="deck-grid compact-grid">
+            <div>
+              <span>符文槽</span>
+              <strong id="runeSlots">0/3</strong>
+            </div>
+            <div>
+              <span>奖励</span>
+              <strong id="rewardPreview">0</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="rune-panel">
+          <div class="panel-heading">
+            <h2>已有符文</h2>
+            <span id="runeHint">0/3</span>
+          </div>
+          <div id="ownedRunes" class="owned-runes"></div>
+        </section>
+
+        <section class="info-panel log-panel">
+          <h2>记录</h2>
+          <ol id="gameLog" class="game-log"></ol>
+        </section>
+      </aside>
+    </main>
+
+    <div id="modalOverlay" class="modal-overlay" hidden>
+      <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow" id="modalEyebrow">牌堆</p>
+            <h2 id="modalTitle">抽牌堆</h2>
+          </div>
+          <button class="icon-button" type="button" data-modal-close aria-label="关闭">×</button>
+        </div>
+        <p id="modalText" class="modal-text"></p>
+        <div id="modalContent" class="modal-content"></div>
+        <div id="modalActions" class="modal-actions"></div>
+      </section>
+    </div>
+
+    <div id="gameOverDialog" class="game-over" hidden>
+      <div class="game-over-panel" role="dialog" aria-modal="true" aria-labelledby="gameOverTitle">
+        <p class="eyebrow">Game Over</p>
+        <h2 id="gameOverTitle">筹码耗尽</h2>
+        <p id="gameOverSummary"></p>
+        <button class="game-button primary" type="button" data-action="restart">
+          重新开始
+        </button>
+      </div>
+    </div>
+    <script defer src="./src/game.js"></script>
+  </body>
+</html>
