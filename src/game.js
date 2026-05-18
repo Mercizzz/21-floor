@@ -226,13 +226,13 @@
   ];
 
   const brushCatalog = [
-    makeBrush("draw-remove", "抽牌削除", "抽牌堆", "remove", 7, 4, "从抽牌堆随机8张牌中选择最多4张移除。"),
+    makeBrush("draw-remove", "抽牌削除", "抽牌堆", "remove", 8, 4, "从抽牌堆随机8张牌中选择最多4张移除。"),
     makeBrush("draw-add", "抽牌添色", "抽牌堆", "add", 5, 4, "从随机8张新牌中选择最多4张加入抽牌堆。"),
-    makeBrush("draw-spike", "抽牌尖刺", "抽牌堆", "spike", 9, 1, "从抽牌堆随机8张牌中选择最多1张附上尖刺。"),
+    makeBrush("draw-spike", "抽牌尖刺", "抽牌堆", "spike", 9, 1, "从抽牌堆随机8张牌中选择最多1张附上“尖刺”标签。"),
     makeBrush("draw-merge", "抽牌缝合", "抽牌堆", "merge", 10, 2, "从抽牌堆随机8张牌中选择2张缝合点数。"),
-    makeBrush("discard-remove", "弃牌削除", "弃牌堆", "remove", 8, 4, "从弃牌堆随机8张牌中选择最多4张移除。"),
+    makeBrush("discard-remove", "弃牌削除", "弃牌堆", "remove", 9, 4, "从弃牌堆随机8张牌中选择最多4张移除。"),
     makeBrush("discard-add", "弃牌添色", "弃牌堆", "add", 3, 4, "从随机8张新牌中选择最多4张加入弃牌堆。"),
-    makeBrush("discard-spike", "弃牌尖刺", "弃牌堆", "spike", 7, 1, "从弃牌堆随机8张牌中选择最多1张附上尖刺。"),
+    makeBrush("discard-spike", "弃牌尖刺", "弃牌堆", "spike", 7, 1, "从弃牌堆随机8张牌中选择最多1张附上“尖刺”标签。"),
     makeBrush("discard-merge", "弃牌缝合", "弃牌堆", "merge", 8, 2, "从弃牌堆随机8张牌中选择2张缝合点数。"),
     makeBrush("draw-gilded", "镀金墨水", "抽牌堆", "instant-tag-gilded", 6, 0, "为抽牌堆中随机1张牌附上“镀金”标签。"),
     makeBrush("draw-quirky", "紫色墨水", "抽牌堆", "instant-tag-quirky", 6, 0, "为抽牌堆中随机1张牌附上“奇巧”标签。"),
@@ -279,6 +279,15 @@
       text: options.text,
       actions: options.actions || [],
       hideClose: options.hideClose !== false,
+    };
+  }
+
+  function showNoticeModal(title, text) {
+    state.modal = {
+      kind: "notice",
+      title: title,
+      text: text,
+      hideClose: false,
     };
   }
 
@@ -342,7 +351,7 @@
     if (reason === "hit") {
       showTutorialModal({
         title: "目标和失败条件",
-        text: "你的目标是完成尽可能多的回合，打得越远越好。\n而筹码降到 0 时这局就结束了。 \n\n现在先点击【摸牌】，抽一张牌试试。",
+        text: "你的目标是爬尽可能多的层，打得越远越好。\n而【筹码】降到 0 时这局就结束了。 \n\n现在先点击【摸牌】，抽一张牌试试。",
         actions: [
           { action: "tutorial-ready-hit", label: "开始练习", primary: true },
         ],
@@ -1019,6 +1028,9 @@
           setTutorialShopTarget();
           delayTutorialPrompt("shop");
         }
+        if (state.stage === 3 && state.floor === 21) {
+          showNoticeModal("通关提示", "你通过了“第二十一层”！恭喜通关！\n不过，你也可以继续向上挑战。");
+        }
       }
       render();
     }, 620);
@@ -1064,7 +1076,7 @@
     if (state.phase !== "shop" || state.gold < currentRefreshCost) return;
     state.gold -= currentRefreshCost;
     generateShop();
-    state.refreshCost += 1;
+    state.refreshCost += 2;
     addLog("支付" + REFRESH_COST + "金币刷新商店。");
     render();
   }
@@ -1074,7 +1086,7 @@
     if (state.phase !== "shop" || state.gold < currentRefreshCost) return;
     state.gold -= currentRefreshCost;
     generateShop();
-    state.refreshCost += 1;
+    state.refreshCost += 2;
     addLog("支付" + currentRefreshCost + "金币刷新商店。");
     render();
   }
@@ -1807,13 +1819,18 @@
     }
     elements.modalEyebrow.textContent = modal.kind === "pile" ? "牌堆" : modal.kind === "brush" ? "画笔" : modal.kind === "tutorial" ? "新手教程" : "弃牌";
     elements.modalTitle.textContent = modal.title;
-    elements.modalText.textContent = modal.kind === "tutorial" ? "" : modal.text;
+    if (modal.kind === "notice") {
+      elements.modalEyebrow.textContent = "提示";
+    }
+    elements.modalText.textContent = modal.kind === "tutorial" || modal.kind === "notice" ? "" : modal.text;
     elements.modalContent.innerHTML = renderModalContent(modal);
-    elements.modalActions.innerHTML = renderModalActions(modal);
+    elements.modalActions.innerHTML = modal.kind === "notice"
+      ? '<button class="game-button primary" type="button" data-modal-close>知道了</button>'
+      : renderModalActions(modal);
   }
 
   function renderModalContent(modal) {
-    if (modal.kind === "tutorial") {
+    if (modal.kind === "tutorial" || modal.kind === "notice") {
       return '<div style="padding: 10px; color: #dce6e2; line-height: 1.8; white-space: pre-wrap; font-size: 1.05rem;">' + escapeHtml(modal.text) + '</div>';
     }
     if (modal.candidates.length === 0) return '<div class="empty-state">这里没有牌。</div>';
