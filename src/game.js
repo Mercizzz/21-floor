@@ -41,6 +41,17 @@
     { id: "lose-gold-not-21", name: "极致贪婪", desc: "本回合停牌时点数若不为21，失去全部金币。" },
   ];
 
+  const weakDebuffs_concat = [
+    { id: "add-jqk", name: "人头攒动", desc: "向抽牌堆塞入J、Q、K各一张。" },
+    { id: "add-8s", name: "八方受敌", desc: "向抽牌堆塞入4张8。" },
+    { id: "add-7s", name: "七零八落", desc: "向弃牌堆塞入5张7。" },
+    { id: "option-disabled", name: "失效选项", desc: "本回合最多抽 2 张牌，不可以弃牌。" },
+    //{ id: "bust-damage", name: "猛烈反噬", desc: "本回合爆牌惩罚+3。" },
+    //{ id: "stand-damage-x2", name: "双倍惩罚", desc: "本回合停牌造成的惩罚乘2。" },
+    //{ id: "stand-under-18", name: "胆怯之罪", desc: "本回合停牌时点数若<17，惩罚乘3。" },
+    { id: "lose-gold-not-21", name: "极致贪婪", desc: "本回合停牌时点数若不为21，失去全部金币。" },
+  ];
+
   const strongDebuffs = [
     { id: "no-tags", name: "标签脱落", desc: "本回合所有标签（尖刺/奇巧/护盾/镀金/图腾等）失效。" },
     { id: "no-runes", name: "符文禁锢", desc: "本回合所有符文失效。" },
@@ -51,6 +62,18 @@
     { id: "bust-damage+", name: "猛烈反噬+", desc: "本回合爆牌惩罚+8。" },
     { id: "stand-damage-x3", name: "三倍惩罚", desc: "本回合停牌造成的惩罚乘3。" },
     { id: "19-20-21", name: "精准头目", desc: "本回合在19，20，21点停牌不扣筹码，否则（包括爆牌）失去8点筹码。" },
+  ];
+
+    const strongDebuffs_concat = [
+    { id: "no-tags", name: "标签脱落", desc: "本回合所有标签（尖刺/奇巧/护盾/镀金/图腾等）失效。" },
+    { id: "no-runes", name: "符文禁锢", desc: "本回合所有符文失效。" },
+    { id: "add-jqk+", name: "人头攒动+", desc: "向抽牌堆塞入J、Q、K各 2 张。" },
+    { id: "add-8s+", name: "八方受敌+", desc: "向抽牌堆塞入8张8。" },
+    { id: "add-7s+", name: "七零八落+", desc: "向弃牌堆塞入10张7。" },
+    { id: "max-1-draw", name: "手足无措", desc: "本回合最多抽 1 张牌，不可以弃牌。" },
+    //{ id: "bust-damage+", name: "猛烈反噬+", desc: "本回合爆牌惩罚+8。" },
+    //{ id: "stand-damage-x3", name: "三倍惩罚", desc: "本回合停牌造成的惩罚乘3。" },
+    //{ id: "19-20-21", name: "精准头目", desc: "本回合在19，20，21点停牌不扣筹码，否则（包括爆牌）失去8点筹码。" },
   ];
 
   const ultimateDebuffs = [
@@ -74,6 +97,18 @@
       html = html.replace(regex, `<span class="keyword-tooltip" data-tooltip="${desc}">${word}</span>`);
     }
     return html;
+  }
+
+  function renderCardBadge(label, className, inlineStyle) {
+    const classes = ["card-badge"];
+    if (className) classes.push(className);
+
+    const tooltip = keywordTooltips[label];
+    const titleAttr = tooltip ? ' title="' + escapeHtml(tooltip) + '"' : "";
+    const styleAttr = inlineStyle ? ' style="' + escapeHtml(inlineStyle) + '"' : "";
+    const tooltipClass = tooltip ? " has-tooltip" : "";
+
+    return '<span class="' + classes.join(" ") + tooltipClass + '"' + styleAttr + titleAttr + ">" + escapeHtml(label) + "</span>";
   }
 
   function getBossDebuffData(id) {
@@ -579,10 +614,10 @@
       debuffs.push(randomItem(strongDebuffs).id);
     } else if (floor >= 7 && floor <= 9) {
       debuffs.push(randomItem(ultimateDebuffs).id);
-      debuffs.push(randomItem(weakDebuffs).id);
+      debuffs.push(randomItem(weakDebuffs_concat).id);
     } else {
       debuffs.push(randomItem(ultimateDebuffs).id);
-      debuffs.push(randomItem(strongDebuffs).id);
+      debuffs.push(randomItem(strongDebuffs_concat).id);
     }
     return debuffs;
   }
@@ -800,8 +835,16 @@
 
   function handleBust() { finishRound("bust"); }
 
+  function getEffectiveExtraDiscards() {
+    return hasDebuff("no-tags") ? 0 : state.roundFlags.extraDiscards;
+  }
+
+  function getEffectiveShieldReduction() {
+    return hasDebuff("no-tags") ? 0 : state.roundFlags.shieldReduction;
+  }
+
   function getMaxDiscards() {
-    return 1 + (hasRune("gambler-brew") ? 1 : 0) + state.roundFlags.extraDiscards;
+    return 1 + (hasRune("gambler-brew") ? 1 : 0) + getEffectiveExtraDiscards();
   }
 
   function startDiscard() {
@@ -868,7 +911,7 @@
       if (hasRune("thorned-armor") && state.hand.some(c => hasActiveTag(c, "spike"))) {
         p = Math.max(0, p - 1);
       }
-      p = Math.max(0, p - state.roundFlags.shieldReduction);
+      p = Math.max(0, p - getEffectiveShieldReduction());
       return p;
     }
   }
@@ -1506,7 +1549,7 @@
         }
         const names = state.activeBossDebuffs.map(id => getBossDebuffData(id).name).join(" + ");
         const descs = state.activeBossDebuffs.map(id => getDebuffDesc(id)).join(" ");
-        banner.innerHTML = `⚠️ 关底削弱生效中：${names} <span>${descs}</span>`;
+        banner.innerHTML = `⚠️ 关底战：${names} <span>${descs}</span>`;
       } else {
         feltEl.classList.remove('is-boss-active');
         const banner = document.getElementById('boss-banner');
@@ -1519,6 +1562,8 @@
     elements.goldStat.textContent = String(state.gold);
     elements.bestStat.textContent = state.best + " 层";
     elements.handValue.textContent = String(value.total);
+    if (elements.runeSlots) elements.runeSlots.textContent = state.runes.length + "/" + RUNE_LIMIT;
+    if (elements.runeHint) elements.runeHint.textContent = state.runes.length + "/" + RUNE_LIMIT;
     elements.drawCount.textContent = String(state.drawPile.length);
     elements.discardCount.textContent = String(state.discardPile.length);
     if (elements.shopDrawCount) elements.shopDrawCount.textContent = String(state.drawPile.length);
@@ -1588,6 +1633,15 @@
          overlayBadges.push('<span class="card-badge" style="background:#555; text-decoration:line-through;">封印</span>');
       }
 
+      overlayBadges = [];
+      if (hasActiveTag(card, "spike")) overlayBadges.push(renderCardBadge("\u5c16\u523a", spikeActiveBadge.trim()));
+      if (hasActiveTag(card, "gilded")) overlayBadges.push(renderCardBadge("\u9540\u91d1"));
+      if (hasActiveTag(card, "quirky")) overlayBadges.push(renderCardBadge("\u5947\u5de7"));
+      if (hasActiveTag(card, "shield")) overlayBadges.push(renderCardBadge("\u62a4\u76fe"));
+      if (hasActiveTag(card, "totem")) overlayBadges.push(renderCardBadge("\u56fe\u817e"));
+      if (hasDebuff("no-tags") && (card.tags.includes("spike") || card.tags.includes("gilded") || card.tags.includes("quirky") || card.tags.includes("shield") || card.tags.includes("totem"))) {
+        overlayBadges.push(renderCardBadge("\u5c01\u5370", "", "background:#555; text-decoration:line-through;"));
+      }
       const overlayHtml = overlayBadges.length > 0 ? '<div class="card-tags overlay-tag">' + overlayBadges.join("") + '</div>' : '';
 
       return (
@@ -1608,7 +1662,15 @@
       return '<span class="card-badge' + isActive + '">' + escapeHtml(badge) + "</span>";
     }).join("");
 
-    const tagHtml = badges ? '<div class="card-tags">' + badges + '</div>' : '<div class="card-tags"></div>';
+    const badgeHtml = getCardBadges(card).map(function (badge) {
+      if (hasDebuff("no-tags") && ["\u5c16\u523a", "\u9540\u91d1", "\u5947\u5de7", "\u62a4\u76fe", "\u56fe\u817e"].includes(badge)) {
+        return renderCardBadge(badge, "", "background:#555; text-decoration:line-through;");
+      }
+      const isActive = (badge === "\u5c16\u523a" && activeValue === 1) ? "is-active" : "";
+      return renderCardBadge(badge, isActive);
+    }).join("");
+
+    const tagHtml = badgeHtml ? '<div class="card-tags">' + badgeHtml + '</div>' : '<div class="card-tags"></div>';
 
     return (
       '<div class="playing-card ' + colorClass + '">' +
@@ -1846,7 +1908,7 @@
     }
   });
 
-  ['runeSlots', 'rewardPreview', 'runeHint'].forEach(function(id) {
+  ['runeSlots', 'rewardPreview'].forEach(function(id) {
     const el = elements[id];
     if (el) {
       const parent = el.closest('.stat-chip, .deck-grid > div');
