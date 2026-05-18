@@ -184,6 +184,7 @@
     chips: STARTING_CHIPS,
     gold: STARTING_GOLD,
     best: loadBestRound(),
+    refreshCost: REFRESH_COST,
     bottlePrice: 3, 
     removedSuits: [],
     activeSuits: [],
@@ -310,6 +311,7 @@
     state.stage = 1;
     state.chips = STARTING_CHIPS;
     state.gold = STARTING_GOLD;
+    state.refreshCost = REFRESH_COST;
     state.bottlePrice = 3;
     state.drawPile = createHalfDeck();
     state.discardPile = [];
@@ -641,6 +643,7 @@
     state.stage = 1;
     state.chips = STARTING_CHIPS;
     state.gold = STARTING_GOLD;
+    state.refreshCost = REFRESH_COST;
     state.bottlePrice = 3;
     state.drawPile = createHalfDeck();
     state.discardPile = [];
@@ -670,6 +673,7 @@
   function beginRound() {
     state.phase = "playing";
     state.lastResult = null;
+    state.refreshCost = REFRESH_COST;
     state.shop = { runes: [], brushes: [], bought: [] };
     state.roundFlags = { discardsUsed: 0, draws: 0, extraDiscards: 0, shieldReduction: 0 }; 
     state.hand = [];
@@ -1055,11 +1059,23 @@
     };
   }
 
-  function refreshShop() {
-    if (state.phase !== "shop" || state.gold < REFRESH_COST) return;
-    state.gold -= REFRESH_COST;
+  function refreshShopLegacy() {
+    const currentRefreshCost = state.refreshCost;
+    if (state.phase !== "shop" || state.gold < currentRefreshCost) return;
+    state.gold -= currentRefreshCost;
     generateShop();
+    state.refreshCost += 1;
     addLog("支付" + REFRESH_COST + "金币刷新商店。");
+    render();
+  }
+
+  function refreshShop() {
+    const currentRefreshCost = state.refreshCost;
+    if (state.phase !== "shop" || state.gold < currentRefreshCost) return;
+    state.gold -= currentRefreshCost;
+    generateShop();
+    state.refreshCost += 1;
+    addLog("支付" + currentRefreshCost + "金币刷新商店。");
     render();
   }
 
@@ -1587,12 +1603,14 @@
     const currentPenalty = calculateStandPenalty(value.total);
     const penaltyText = currentPenalty === 0 ? "无损失" : "失去" + currentPenalty + "筹码";
     const canDiscard = discardsLeft > 0 && state.hand.length > 0 && !hasDebuff("max-1-draw") && !hasDebuff("option-disabled");
+    const refreshButton = document.querySelector('[data-action="refresh"]');
+    if (refreshButton) refreshButton.dataset.origText = "刷新";
 
     setActionState("hit", isPlaying && !hitDisabled && tutorialAllowsAction("hit"));
     setActionState("discard", isPlaying && canDiscard && tutorialAllowsAction("discard"), discardText);
     setActionState("stand", isPlaying && tutorialAllowsAction("stand"), penaltyText);
     setActionState("next", isShop && !state.tutorial.active);
-    setActionState("refresh", isShop && state.gold >= REFRESH_COST && !state.tutorial.active);
+    setActionState("refresh", isShop && state.gold >= state.refreshCost && !state.tutorial.active, state.refreshCost + "金币");
 
     renderModal();
     renderGameOver();
