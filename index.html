@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>二十一回廊</title>
+    <title>第二十一层 v1.0</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -11,12 +11,16 @@
       <section class="table-panel" aria-label="主区域">
         <header class="topbar">
           <div>
-            <p class="eyebrow">Blackjack Roguelite</p>
-            <h1>二十一回廊</h1>
+            <p class="eyebrow">The 21st Floor</p>
+            <h1>第二十一层 v1.0</h1>
           </div>
           <div class="top-stats" aria-label="当前状态">
             <div class="stat-chip">
-              <span>回合</span>
+              <span>最佳</span>
+              <strong id="bestStat">0</strong>
+            </div>
+            <div class="stat-chip">
+              <span>进度</span>
               <strong id="roundStat">1</strong>
             </div>
             <div class="stat-chip is-primary">
@@ -27,17 +31,14 @@
               <span>金币</span>
               <strong id="goldStat">0</strong>
             </div>
-            <div class="stat-chip">
-              <span>最佳</span>
-              <strong id="bestStat">0</strong>
-            </div>
+
           </div>
         </header>
 
         <div id="roundView" class="felt">
           <div class="round-strip">
             <span id="phaseLabel" class="phase-label">摸牌阶段</span>
-            <span id="roundMessage" class="round-message">选择摸牌或停牌。</span>
+            <span id="roundMessage" class="round-message">选择摸牌、弃牌或停牌。</span>
           </div>
 
           <div class="table-layout">

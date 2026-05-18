@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const STARTING_CHIPS = 16;
+  const STARTING_CHIPS = 15;
   const STARTING_GOLD = 0;
   const BASE_BUST_PENALTY = 6;
   const BASE_GOLD_REWARD = 3;
@@ -42,7 +42,7 @@
   ];
 
   const strongDebuffs = [
-    { id: "no-tags", name: "标签脱落", desc: "本回合所有标签（尖刺/奇巧/护盾/镀金等）失效。" },
+    { id: "no-tags", name: "标签脱落", desc: "本回合所有标签（尖刺/奇巧/护盾/镀金/图腾等）失效。" },
     { id: "no-runes", name: "符文禁锢", desc: "本回合所有符文失效。" },
     { id: "add-jqk+", name: "人头攒动+", desc: "向抽牌堆塞入J、Q、K各 2 张。" },
     { id: "add-8s+", name: "八方受敌+", desc: "向抽牌堆塞入8张8。" },
@@ -63,6 +63,7 @@
     "镀金": "停牌结算时若留在手牌，每张额外产出 2 金币。",
     "奇巧": "抽到时，本回合弃牌次数 +1。",
     "护盾": "抽到时，本回合停牌造成的筹码损失减少 1 点。",
+    "图腾": "在回合中主动弃掉此牌时，获得 1 点筹码。",
     "缝合": "可以同时视为两张牌对应的点数。"
   };
 
@@ -137,7 +138,7 @@
       shopTargetType: "",
       shopTargetId: "",
       grantedGold: 0,
-      locked: false, // 控制教程中的强制等待UI锁定状态
+      locked: false,
     };
   }
 
@@ -148,6 +149,7 @@
     chips: STARTING_CHIPS,
     gold: STARTING_GOLD,
     best: loadBestRound(),
+    bottlePrice: 3, 
     removedSuits: [],
     activeSuits: [],
     drawPile: [],
@@ -181,15 +183,18 @@
     { id: "draw-more", name: "好牌多抓", price: 5, effect: "如果在点数大于等于20点时选择“摸牌”，获得1点筹码。" },
     { id: "excellent-intuition", name: "优秀直觉", price: 10, effect: "当抽牌堆为空，手牌点数视作21。" },
     { id: "perfect-ten", name: "十全十美", price: 10, effect: "当手牌数量等于10，手牌点数视作21。" },
+    { id: "coupon", name: "优惠券", price: 9, effect: "你商店的“瓶中墨汁”售价始终为5金币。" },
+    { id: "hanged-man", name: "吊人", price: 9, effect: "你每从抽牌堆永久移除一张牌，获得1点筹码。" },
+    { id: "hanged-man-reversed", name: "吊人（倒置）", price: 6, effect: "你每从弃牌堆永久移除一张牌，获得1点筹码。" },
     { id: "failure", name: "失败", price: 6, effect: "没有任何用。" },
   ];
 
   const brushCatalog = [
-    makeBrush("draw-remove", "抽牌削除", "抽牌堆", "remove", 6, 4, "从抽牌堆随机8张牌中选择最多4张移除。"),
+    makeBrush("draw-remove", "抽牌削除", "抽牌堆", "remove", 7, 4, "从抽牌堆随机8张牌中选择最多4张移除。"),
     makeBrush("draw-add", "抽牌添色", "抽牌堆", "add", 5, 4, "从随机8张新牌中选择最多4张加入抽牌堆。"),
     makeBrush("draw-spike", "抽牌尖刺", "抽牌堆", "spike", 9, 1, "从抽牌堆随机8张牌中选择最多1张附上尖刺。"),
     makeBrush("draw-merge", "抽牌缝合", "抽牌堆", "merge", 10, 2, "从抽牌堆随机8张牌中选择2张缝合点数。"),
-    makeBrush("discard-remove", "弃牌削除", "弃牌堆", "remove", 4, 4, "从弃牌堆随机8张牌中选择最多4张移除。"),
+    makeBrush("discard-remove", "弃牌削除", "弃牌堆", "remove", 8, 4, "从弃牌堆随机8张牌中选择最多4张移除。"),
     makeBrush("discard-add", "弃牌添色", "弃牌堆", "add", 3, 4, "从随机8张新牌中选择最多4张加入弃牌堆。"),
     makeBrush("discard-spike", "弃牌尖刺", "弃牌堆", "spike", 7, 1, "从弃牌堆随机8张牌中选择最多1张附上尖刺。"),
     makeBrush("discard-merge", "弃牌缝合", "弃牌堆", "merge", 8, 2, "从弃牌堆随机8张牌中选择2张缝合点数。"),
@@ -197,9 +202,12 @@
     makeBrush("draw-quirky", "紫色墨水", "抽牌堆", "instant-tag-quirky", 6, 0, "为抽牌堆中随机1张牌附上“奇巧”标签。"),
     makeBrush("draw-shield", "抽牌护盾", "抽牌堆", "tag-shield", 7, 1, "从抽牌堆随机8张牌中选择1张附上“护盾”标签。"),
     makeBrush("discard-shield", "弃牌护盾", "弃牌堆", "tag-shield", 6, 1, "从弃牌堆随机8张牌中选择1张附上“护盾”标签。"),
+    makeBrush("draw-totem", "抽牌图腾", "抽牌堆", "tag-totem", 7, 1, "从抽牌堆随机8张牌中选择1张附上“图腾”标签。"),
+    makeBrush("discard-totem", "弃牌图腾", "弃牌堆", "tag-totem", 6, 1, "从弃牌堆随机8张牌中选择1张附上“图腾”标签。"),
     makeBrush("draw-clone-discard", "镜中之影", "抽牌堆", "clone-to-discard", 7, 1, "从抽牌堆随机8张牌中选择1张，添加其复制牌到弃牌堆。"),
     makeBrush("discard-clone-draw", "影中之镜", "弃牌堆", "clone-to-draw", 8, 1, "从弃牌堆随机8张牌中选择1张，添加其复制牌到抽牌堆。"),
-    makeBrush("instant-bottle", "瓶中墨汁", "无", "instant-bottle", 6, 0, "购买时，获得5点筹码，然后将J, Q, K各一张加入你的弃牌堆。"),
+    makeBrush("instant-erase-untagged", "牌组消除", "无", "instant-erase-untagged", 8, 0, "随机从牌库移除4张没有标签的牌。"),
+    makeBrush("instant-bottle", "瓶中墨汁", "无", "instant-bottle", 3, 0, "购买时，获得5筹码。将随机三张新牌放入弃牌堆。每次购买时，下次售价+1。"),
   ];
 
   function makeBrush(id, name, targetLabel, operation, price, maxPick, description) {
@@ -243,13 +251,13 @@
     state.tutorial = createTutorialState();
     state.tutorial.offerReason = reason;
     showTutorialModal({
-      title: isRestart ? "\u518d\u6765\u4e00\u5c40" : "\u65b0\u624b\u6559\u7a0b",
+      title: isRestart ? "再来一局" : "新手教程",
       text: isRestart
-        ? "\u65b0\u7684\u4e00\u5c40\u5df2\u7ecf\u51c6\u5907\u597d\u4e86\u3002\u8981\u4e0d\u8981\u987a\u624b\u518d\u8ddf\u4e00\u904d\u6559\u7a0b\uff1f"
-        : "\u68c0\u6d4b\u5230\u4f60\u662f\u7b2c\u4e00\u6b21\u6e38\u73a9\u3002\u8981\u4e0d\u8981\u76f4\u63a5\u5728\u5bf9\u5c40\u91cc\u8ddf\u7740\u6559\u7a0b\u719f\u6089\u4e00\u904d\uff1f",
+        ? "新的一个局已经准备好了。当然，你也可以再看一遍教程。"
+        : "检测到你是第一次游玩。要不要直接在对局里跟着教程熟悉一遍？",
       actions: [
-        { action: "tutorial-decline", label: "\u5148\u76f4\u63a5\u5f00\u59cb" },
-        { action: "tutorial-accept", label: "\u5f00\u59cb\u6559\u7a0b", primary: true },
+        { action: "tutorial-decline", label: "直接开始" },
+        { action: "tutorial-accept", label: "开始教程"},
       ],
     });
   }
@@ -267,6 +275,7 @@
     state.stage = 1;
     state.chips = STARTING_CHIPS;
     state.gold = STARTING_GOLD;
+    state.bottlePrice = 3;
     state.drawPile = createHalfDeck();
     state.discardPile = [];
     state.hand = [
@@ -289,16 +298,16 @@
     state.drawPile.push(createTutorialCard("9", 3));
     state.drawPile.push(createTutorialCard("5", 4));
 
-    addLog("\u6559\u7a0b\u5df2\u5f00\u59cb\uff0c\u5148\u8ddf\u7740\u5f15\u5bfc\u719f\u6089\u8fd9\u4e00\u56de\u5408\u3002");
+    addLog("教程已开始，先跟着引导熟悉这一回合。");
   }
 
   function getTutorialPrompt(reason) {
     if (reason === "hit") {
       showTutorialModal({
-        title: "\u76ee\u6807\u548c\u5931\u8d25\u6761\u4ef6",
-        text: "\u4f60\u7684\u76ee\u6807\u662f\u4e00\u5c42\u5c42\u5f80\u4e0a\u722c\uff0c\u6253\u5f97\u8d8a\u8fdc\u8d8a\u597d\u3002\n\u6bcf\u56de\u5408\u90fd\u5728\u60f3\u529e\u6cd5\u8ba9\u624b\u724c\u5c3d\u91cf\u63a5\u8fd1 21 \u70b9\uff0c\u800c\u7b79\u7801\u964d\u5230 0 \u65f6\u8fd9\u5c40\u5c31\u7ed3\u675f\u4e86\u3002",
+        title: "目标和失败条件",
+        text: "你的目标是完成尽可能多的回合，打得越远越好。\n而筹码降到 0 时这局就结束了。 \n\n现在先点击【摸牌】，抽一张牌试试。",
         actions: [
-          { action: "tutorial-ready-hit", label: "\u5f00\u59cb\u7ec3\u4e60", primary: true },
+          { action: "tutorial-ready-hit", label: "开始练习", primary: true },
         ],
       });
       return;
@@ -306,10 +315,10 @@
 
     if (reason === "discard") {
       showTutorialModal({
-        title: "\u5148\u8bd5\u8bd5\u5f03\u724c",
-        text: "\u3010\u5f03\u724c\u3011\u53ef\u4ee5\u628a\u5f53\u524d\u4e0d\u60f3\u8981\u7684\u624b\u724c\u4e22\u8fdb\u5f03\u724c\u5806\uff0c\u4e3a\u8fd9\u4e2a\u56de\u5408\u817e\u51fa\u7a7a\u95f4\u3002\n\u9ed8\u8ba4\u6bcf\u56de\u5408\u53ea\u80fd\u4e3b\u52a8\u5f03\u724c 1 \u6b21\uff0c\u73b0\u5728\u70b9\u51fb\u3010\u5f03\u724c\u3011\u8bd5\u8bd5\u3002",
+        title: "先试试弃牌",
+        text: "【弃牌】可以把当前不想要的手牌丢进弃牌堆。\n默认每回合只能主动弃牌 1 次，现在点击【弃牌】试试。\n\n如果你的抽牌堆空了，弃牌堆会被洗回抽牌堆。",
         actions: [
-          { action: "tutorial-ready-discard", label: "\u53bb\u5f03\u4e00\u5f20", primary: true },
+          { action: "tutorial-ready-discard", label: "去弃一张", primary: true },
         ],
       });
       return;
@@ -317,10 +326,10 @@
 
     if (reason === "stand") {
       showTutorialModal({
-        title: "\u518d\u8bd5\u8bd5\u505c\u724c",
-        text: "\u3010\u505c\u724c\u3011\u4f1a\u7acb\u523b\u7ed3\u675f\u8fd9\u4e2a\u56de\u5408\uff0c\u7136\u540e\u6309\u7167\u4f60\u4e0e 21 \u70b9\u7684\u5dee\u8ddd\u6263\u9664\u7b79\u7801\u3002\n\u73b0\u5728\u70b9\u51fb\u3010\u505c\u724c\u3011\uff0c\u6211\u4eec\u4e00\u8d77\u8fdb\u5165\u5546\u5e97\u3002",
+        title: "再试试停牌",
+        text: "【停牌】会立刻结束这个回合，然后按照你与 21 点的差距扣除筹码。\n注意，如果你【摸牌】后手牌点数超过 21 点，会“爆牌”——扣除 6 点筹码并立即结束回合。\n所以，在合适的时候【停牌】是很重要的！\n\n现在点击【停牌】，我们一起进入商店。",
         actions: [
-          { action: "tutorial-ready-stand", label: "\u53bb\u505c\u724c", primary: true },
+          { action: "tutorial-ready-stand", label: "去停牌", primary: true },
         ],
       });
       return;
@@ -328,13 +337,13 @@
 
     if (reason === "shop") {
       const topUpText = state.tutorial.grantedGold > 0
-        ? "\n\n\u4e3a\u4e86\u8ba9\u4f60\u80fd\u7acb\u523b\u8bd5\u8bd5\uff0c\u6211\u5e2e\u4f60\u8865\u4e86 " + state.tutorial.grantedGold + " \u91d1\u5e01\u3002"
+        ? "\n\n为了让你能立刻试试，我帮你补了 " + state.tutorial.grantedGold + " 金币。"
         : "";
       showTutorialModal({
-        title: "\u8fdb\u5165\u5546\u5e97",
-        text: "\u6bcf\u4e2a\u56de\u5408\u7ed3\u7b97\u540e\u90fd\u4f1a\u8fdb\u5546\u5e97\u3002\n\u3010\u7b26\u6587\u3011\u662f\u8fd9\u5c40\u6301\u7eed\u751f\u6548\u7684\u88ab\u52a8\u589e\u76ca\uff0c\u3010\u753b\u7b14\u3011\u5219\u662f\u7528\u6765\u4fee\u6539\u3001\u5f3a\u5316\u724c\u5e93\u7684\u9053\u5177\u3002\n\u5148\u4e70\u4e0b\u4e00\u4ef6\u7b26\u6587\uff0c\u770b\u770b\u5546\u5e97\u600e\u4e48\u7528\u3002" + topUpText,
+        title: "进入商店",
+        text: "每个回合结算后都会进商店。\n【符文】是这局持续生效的被动增益，【画笔】则是用来修改、强化牌库的道具。\n先买下一件符文，看看商店怎么用。" + topUpText,
         actions: [
-          { action: "tutorial-ready-shop", label: "\u53bb\u8d2d\u7269", primary: true },
+          { action: "tutorial-ready-shop", label: "去购物", primary: true },
         ],
       });
       return;
@@ -342,10 +351,10 @@
 
     if (reason === "boss") {
       showTutorialModal({
-        title: "\u4e00\u5c42\u6709\u4e09\u56de\u5408",
-        text: "\u4e00\u5c42\u7531 3 \u4e2a\u56de\u5408\u7ec4\u6210\uff0c\u7b2c 3 \u4e2a\u56de\u5408\u5c31\u662f\u5173\u5e95\u6218\u6597\u3002\n\u53f3\u4e0a\u89d2\u7684\u7ea2\u8272\u5706\u70b9\u4ee3\u8868\u8fd9\u5c42\u7684\u5173\u5e95\uff0c\u628a\u9f20\u6807\u79fb\u4e0a\u53bb\uff0c\u5c31\u80fd\u63d0\u524d\u770b\u5230\u5173\u5e95\u7279\u6548\u3002",
+        title: "一层有三回合",
+        text: "一层由 3 个回合组成，第 3 个回合就是关底战斗。\n关底战斗有一个强大的负面特效。\n右上角【牌局】框内的圆点代表这层的进度，把鼠标移到红色圆圈，就能提前看到关底特效。",
         actions: [
-          { action: "tutorial-ready-boss", label: "\u6211\u6765\u770b\u770b", primary: true },
+          { action: "tutorial-ready-boss", label: "我来看看", primary: true },
         ],
       });
       return;
@@ -353,16 +362,15 @@
 
     if (reason === "finish") {
       showTutorialModal({
-        title: "\u6559\u7a0b\u5b8c\u6210",
-        text: "\u4f60\u5df2\u7ecf\u8d70\u5b8c\u4e86\u6838\u5fc3\u6d41\u7a0b\uff1a\u6478\u724c\u3001\u5f03\u724c\u3001\u505c\u724c\uff0c\u4ee5\u53ca\u5546\u5e97\u548c\u5173\u5e95\u63d0\u793a\u7684\u770b\u6cd5\u3002\n\u73b0\u5728\u5c31\u53ef\u4ee5\u76f4\u63a5\u7ee7\u7eed\u8fd9\u5c40\u4e86\u3002",
+        title: "教程完成",
+        text: "你已经走完了核心流程：摸牌、弃牌、停牌，以及商店和关底提示的看法。\n现在就可以直接继续这局了。",
         actions: [
-          { action: "tutorial-finish", label: "\u7ee7\u7eed\u8fd9\u5c40", primary: true },
+          { action: "tutorial-finish", label: "继续这局", primary: true },
         ],
       });
     }
   }
 
-  // ---------------- 新增：延迟弹出教程提示并暂时锁定 UI ----------------
   function delayTutorialPrompt(reason) {
     state.tutorial.locked = true;
     window.setTimeout(function () {
@@ -371,7 +379,6 @@
       render();
     }, 1000);
   }
-  // -------------------------------------------------------------------
 
   function tutorialAllowsAction(action) {
     if (!state.tutorial.active) return true;
@@ -391,16 +398,16 @@
 
   function getTutorialHint() {
     if (!state.tutorial.active) return "";
-    if (state.tutorial.awaiting === "hit") return "\u6559\u7a0b\uff1a\u5148\u70b9\u51fb\u3010\u6478\u724c\u3011\u62bd 1 \u5f20\u724c\u3002";
-    if (state.tutorial.awaiting === "discard-button") return "\u6559\u7a0b\uff1a\u73b0\u5728\u8bd5\u8bd5\u3010\u5f03\u724c\u3011\u3002";
+    if (state.tutorial.awaiting === "hit") return "教程：先点击【摸牌】抽 1 张牌。";
+    if (state.tutorial.awaiting === "discard-button") return "教程：现在试试【弃牌】。";
     if (state.tutorial.awaiting === "discard-select") {
       return state.modal && state.modal.selectedIds.length > 0
-        ? "\u6559\u7a0b\uff1a\u70b9\u51fb\u786e\u8ba4\uff0c\u5b8c\u6210\u8fd9\u6b21\u5f03\u724c\u3002"
-        : "\u6559\u7a0b\uff1a\u5148\u9009\u4e2d\u4e00\u5f20\u8981\u4e22\u6389\u7684\u624b\u724c\u3002";
+        ? "教程：点击确认，完成这次弃牌。"
+        : "教程：先选中一张要丢掉的手牌。";
     }
-    if (state.tutorial.awaiting === "stand") return "\u6559\u7a0b\uff1a\u70b9\u51fb\u3010\u505c\u724c\u3011\u8fdb\u5165\u7ed3\u7b97\u3002";
-    if (state.tutorial.awaiting === "shop-buy") return "\u6559\u7a0b\uff1a\u5148\u4e70\u4e0b\u9ad8\u4eae\u7684\u7b26\u6587\u3002";
-    if (state.tutorial.awaiting === "boss-hover") return "\u6559\u7a0b\uff1a\u628a\u9f20\u6807\u79fb\u5230\u53f3\u4e0a\u89d2\u7684\u7ea2\u8272\u5706\u70b9\u4e0a\u3002";
+    if (state.tutorial.awaiting === "stand") return "教程：点击【停牌】进入结算。";
+    if (state.tutorial.awaiting === "shop-buy") return "教程：先买下高亮的符文。";
+    if (state.tutorial.awaiting === "boss-hover") return "教程：把鼠标移到右上角的红色圆点上。";
     return "";
   }
 
@@ -446,7 +453,7 @@
     if (targetRune && state.gold < targetRune.price) {
       state.tutorial.grantedGold = targetRune.price - state.gold;
       state.gold = targetRune.price;
-      addLog("\u6559\u7a0b\u8865\u7ed9\uff1a\u83b7\u5f97 " + state.tutorial.grantedGold + " \u91d1\u5e01\uff0c\u8db3\u591f\u5148\u8bd5\u8bd5\u8d2d\u4e70\u3002");
+      addLog("教程补给：获得 " + state.tutorial.grantedGold + " 金币，足够先试试购买。");
     }
   }
 
@@ -585,7 +592,7 @@
   }
 
   function hasActiveTag(card, tag) {
-    if (hasDebuff("no-tags") && ["spike", "quirky", "shield", "gilded"].includes(tag)) {
+    if (hasDebuff("no-tags") && ["spike", "quirky", "shield", "gilded", "totem"].includes(tag)) {
       return false;
     }
     return card.tags.includes(tag);
@@ -599,6 +606,7 @@
     state.stage = 1;
     state.chips = STARTING_CHIPS;
     state.gold = STARTING_GOLD;
+    state.bottlePrice = 3;
     state.drawPile = createHalfDeck();
     state.discardPile = [];
     state.hand = [];
@@ -808,7 +816,7 @@
     if (state.tutorial.active && state.tutorial.awaiting === "discard-button") {
       state.tutorial.awaiting = "discard-select";
       state.modal.hideClose = true;
-      state.modal.text = "\u9009\u4e2d\u4e00\u5f20\u624b\u724c\uff0c\u7136\u540e\u786e\u8ba4\u5c06\u5b83\u4e22\u8fdb\u5f03\u724c\u5806\u3002";
+      state.modal.text = "选中一张手牌，然后确认将它丢进弃牌堆。";
     }
     render();
   }
@@ -825,6 +833,11 @@
       if (hasRune("cardboard-box") && Math.random() < 0.1) {
         state.chips += 1;
         addLog("📦 【小纸箱】生效，获得了1点筹码！");
+      }
+      
+      if (hasActiveTag(card, "totem")) {
+        state.chips += 1;
+        addLog("🃏 主动弃掉图腾牌，获得了1点筹码！");
       }
     }
     state.modal = null;
@@ -1033,13 +1046,22 @@
     render();
   }
 
+  function getBrushPrice(brushId) {
+    if (brushId === "instant-bottle") {
+      return hasRune("coupon") ? 5 : state.bottlePrice;
+    }
+    const brush = getBrush(brushId);
+    return brush ? brush.price : 999;
+  }
+
   function startBrushPurchase(brushId) {
     if (state.phase !== "shop" || state.shop.bought.includes(brushId)) return;
     const brush = getBrush(brushId);
-    if (!brush || state.gold < brush.price || !canUseBrush(brush)) return;
+    const currentPrice = getBrushPrice(brushId);
+    if (!brush || state.gold < currentPrice || !canUseBrush(brush)) return;
     
     if (brush.maxPick === 0) {
-      state.gold -= brush.price;
+      state.gold -= currentPrice;
       applyBrush(brush, [], []);
       state.shop.bought.push(brush.id);
       render();
@@ -1059,8 +1081,9 @@
     const modal = state.modal;
     if (!modal || modal.kind !== "brush") return;
     const brush = getBrush(modal.brushId);
-    if (!brush || state.gold < brush.price || !isModalSelectionValid(modal)) return;
-    state.gold -= brush.price;
+    const currentPrice = getBrushPrice(modal.brushId);
+    if (!brush || state.gold < currentPrice || !isModalSelectionValid(modal)) return;
+    state.gold -= currentPrice;
     applyBrush(brush, modal.selectedIds, modal.candidates);
     state.shop.bought.push(brush.id);
     state.modal = null;
@@ -1084,12 +1107,41 @@
       } else addLog("抽牌堆为空，" + brush.name + "挥空了。");
       return;
     }
+    if (brush.operation === "instant-erase-untagged") {
+      let untagged = [];
+      state.drawPile.forEach(function(c) { if (c.tags.length === 0) untagged.push({card: c, pile: "draw"}); });
+      state.discardPile.forEach(function(c) { if (c.tags.length === 0) untagged.push({card: c, pile: "discard"}); });
+      let toRemove = sample(untagged, 4);
+      let removedDraw = 0, removedDiscard = 0;
+      for (let item of toRemove) {
+        if (item.pile === "draw") {
+          const idx = state.drawPile.findIndex(function(c) { return c.id === item.card.id; });
+          if (idx !== -1) { state.drawPile.splice(idx, 1); removedDraw++; }
+        } else {
+          const idx = state.discardPile.findIndex(function(c) { return c.id === item.card.id; });
+          if (idx !== -1) { state.discardPile.splice(idx, 1); removedDiscard++; }
+        }
+      }
+      addLog("使用" + brush.name + "，移除了" + toRemove.length + "张无标签牌。");
+      
+      if (removedDraw > 0 && hasRune("hanged-man")) {
+        state.chips += removedDraw;
+        addLog("吊人生效，获得" + removedDraw + "点筹码。");
+      }
+      if (removedDiscard > 0 && hasRune("hanged-man-reversed")) {
+        state.chips += removedDiscard;
+        addLog("吊人（倒置）生效，获得" + removedDiscard + "点筹码。");
+      }
+      return;
+    }
     if (brush.operation === "instant-bottle") {
       state.chips += 5;
-      state.discardPile.push(makeCard("K", randomItem(suits), "brush"));
-      state.discardPile.push(makeCard("Q", randomItem(suits), "brush"));
-      state.discardPile.push(makeCard("J", randomItem(suits), "brush"));
-      addLog("使用" + brush.name + "，获得了5点筹码并将J, Q, K各一张加入了弃牌堆。");
+      const validSuits = state.activeSuits.length > 0 ? state.activeSuits : suits;
+      for(let i = 0; i < 3; i++) {
+        state.discardPile.push(makeCard(randomItem(ranks), randomItem(validSuits), "brush"));
+      }
+      state.bottlePrice += 1;
+      addLog("使用" + brush.name + "，获得了5点筹码并将3张随机新牌加入了弃牌堆。");
       return;
     }
 
@@ -1104,6 +1156,14 @@
     if (brush.operation === "remove") {
       const removed = removeCardsByIds(pile, selectedIds);
       addLog("使用" + brush.name + "，从" + brush.targetLabel + "移除" + removed.length + "张牌。");
+      if (brush.target === "draw" && hasRune("hanged-man") && removed.length > 0) {
+        state.chips += removed.length;
+        addLog("吊人生效，获得" + removed.length + "点筹码。");
+      }
+      if (brush.target === "discard" && hasRune("hanged-man-reversed") && removed.length > 0) {
+        state.chips += removed.length;
+        addLog("吊人（倒置）生效，获得" + removed.length + "点筹码。");
+      }
       return;
     }
     if (brush.operation === "spike") {
@@ -1120,6 +1180,14 @@
         if (card && !card.tags.includes("shield")) card.tags.push("shield");
       }
       addLog("使用" + brush.name + "，为" + selectedIds.length + "张牌附上护盾。");
+      return;
+    }
+    if (brush.operation === "tag-totem") {
+      for (const id of selectedIds) {
+        const card = pile.find(function (entry) { return entry.id === id; });
+        if (card && !card.tags.includes("totem")) card.tags.push("totem");
+      }
+      addLog("使用" + brush.name + "，为" + selectedIds.length + "张牌附上图腾。");
       return;
     }
     if (brush.operation === "clone-to-discard" || brush.operation === "clone-to-draw") {
@@ -1202,7 +1270,11 @@
     return state.hand.splice(index, 1)[0];
   }
 
-  function cancelModal() { state.modal = null; render(); }
+  function cancelModal() { 
+    if (state.modal && state.modal.kind === "tutorial") return; // 拦截教程弹窗的关闭操作
+    state.modal = null; 
+    render(); 
+  }
 
   function openPileViewer(target) {
     const pile = getTargetPile(target);
@@ -1339,6 +1411,7 @@
     if (card.tags.includes("gilded")) tags.push("镀金");
     if (card.tags.includes("quirky")) tags.push("奇巧");
     if (card.tags.includes("shield")) tags.push("护盾");
+    if (card.tags.includes("totem")) tags.push("图腾");
     if (card.mergeRanks.length > 0) tags.push("缝合" + [card.rank].concat(card.mergeRanks).join("/"));
     return tags.length > 0 ? "（" + tags.join("，") + "）" : "";
   }
@@ -1510,7 +1583,8 @@
       if (hasActiveTag(card, "gilded")) overlayBadges.push('<span class="card-badge">镀金</span>');
       if (hasActiveTag(card, "quirky")) overlayBadges.push('<span class="card-badge">奇巧</span>');
       if (hasActiveTag(card, "shield")) overlayBadges.push('<span class="card-badge">护盾</span>');
-      if (hasDebuff("no-tags") && (card.tags.includes("spike") || card.tags.includes("gilded") || card.tags.includes("quirky") || card.tags.includes("shield"))) {
+      if (hasActiveTag(card, "totem")) overlayBadges.push('<span class="card-badge">图腾</span>');
+      if (hasDebuff("no-tags") && (card.tags.includes("spike") || card.tags.includes("gilded") || card.tags.includes("quirky") || card.tags.includes("shield") || card.tags.includes("totem"))) {
          overlayBadges.push('<span class="card-badge" style="background:#555; text-decoration:line-through;">封印</span>');
       }
 
@@ -1527,7 +1601,7 @@
     }
 
     const badges = getCardBadges(card).map(function (badge) {
-      if (hasDebuff("no-tags") && ["尖刺", "镀金", "奇巧", "护盾"].includes(badge)) {
+      if (hasDebuff("no-tags") && ["尖刺", "镀金", "奇巧", "护盾", "图腾"].includes(badge)) {
         return '<span class="card-badge" style="background:#555; text-decoration:line-through;">' + escapeHtml(badge) + "</span>";
       }
       const isActive = (badge === "尖刺" && activeValue === 1) ? " is-active" : "";
@@ -1552,6 +1626,7 @@
     if (card.tags.includes("gilded")) badges.push("镀金");
     if (card.tags.includes("quirky")) badges.push("奇巧");
     if (card.tags.includes("shield")) badges.push("护盾");
+    if (card.tags.includes("totem")) badges.push("图腾");
     if (card.mergeRanks.length > 0) badges.push("缝合");
     return badges;
   }
@@ -1597,12 +1672,13 @@
 
   function renderBrushShopItem(brushId) {
     const brush = getBrush(brushId);
+    const currentPrice = getBrushPrice(brushId);
     const bought = state.shop.bought.includes(brush.id);
-    const canBuy = state.gold >= brush.price && !bought && canUseBrush(brush) && tutorialAllowsShopPurchase("brush", brush.id);
+    const canBuy = state.gold >= currentPrice && !bought && canUseBrush(brush) && tutorialAllowsShopPurchase("brush", brush.id);
     const buttonText = bought ? "已使用" : "使用";
 
     return renderShopCard({
-      title: brush.name, badge: "画笔", description: brush.description, price: brush.price,
+      title: brush.name, badge: "画笔", description: brush.description, price: currentPrice,
       action: 'data-buy-brush="' + brush.id + '"', buttonText: buttonText, disabled: !canBuy, bought: bought,
     });
   }
@@ -1703,7 +1779,6 @@
   }
 
   document.addEventListener("click", function (event) {
-    // 拦截锁定期内的一切点击，防止多重操作和越权破坏引导
     if (state.tutorial.active && state.tutorial.locked) return;
 
     const actionButton = event.target.closest("[data-action]");
